@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Repo RAG Assistant</title>
+</head>
+<body>
+  <h1>Repo RAG Assistant</h1>
+  
+  <form method="POST">
+    <input type="text" name="repo_link" placeholder="Paste GitHub repo link..." style="width: 300px;">
+    <button type="submit">Go</button>
+  </form>
+
+  <h2>My Projects</h2>
+  <ul>
+    {% for repo in repos %}
+      <li><a href="{{ url_for('workspace', repo=repo) }}">{{ repo }}</a></li>
+    {% endfor %}
+  </ul>
+</body>
+</html>
