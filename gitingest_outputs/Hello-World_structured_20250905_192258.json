@@ -1,0 +1,20 @@
+{
+  "repo_url": "https://github.com/octocat/Hello-World",
+  "processed_at": "2025-09-05T19:22:58.411789",
+  "total_files": 1,
+  "total_size": 12,
+  "language_stats": {},
+  "file_hierarchy": {
+    "octocat-hello-world": {},
+    "README": "README"
+  },
+  "files": {
+    "README": {
+      "content": "Hello World!",
+      "language": "unknown",
+      "line_count": 1,
+      "size_bytes": 12,
+      "file_type": "other"
+    }
+  }
+}

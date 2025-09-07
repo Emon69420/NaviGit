@@ -1,0 +1,422 @@
+Directory structure:
+└── github-gitignore/
+    ├── README.md
+    ├── CONTRIBUTING.md
+    ├── LICENSE
+    ├── Global/
+    │   └── README.md
+    └── .github/
+        ├── PULL_REQUEST_TEMPLATE.md
+        └── workflows/
+            └── stale.yml
+
+================================================
+FILE: README.md
+================================================
+# A collection of `.gitignore` templates
+
+This is GitHubâ€™s collection of [`.gitignore`][man] file templates.
+We use this list to populate the `.gitignore` template choosers available
+in the GitHub.com interface when creating new repositories and files.
+
+For more information about how `.gitignore` files work, and how to use them,
+the following resources are a great place to start:
+
+- The [Ignoring Files chapter][chapter] of the [Pro Git][progit] book.
+- The [Ignoring Files article][help] on the GitHub Help site.
+- The [gitignore(5)][man] manual page.
+
+[man]: https://git-scm.com/docs/gitignore
+[help]: https://help.github.com/articles/ignoring-files
+[chapter]: https://git-scm.com/book/en/v2/Git-Basics-Recording-Changes-to-the-Repository#_ignoring
+[progit]: https://git-scm.com/book
+
+## Folder structure
+
+We support a collection of templates, organized in this way:
+
+- The root folder contains templates in common use, to help people get started
+  with popular programming languages and technologies. These define a meaningful
+  set of rules to help get started, and ensure you are not committing
+  unimportant files into your repository.
+- [`Global`](./Global) contains templates for various editors, tools and
+  operating systems that can be used in different situations. It is recommended
+  that you either [add these to your global template](https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files#configuring-ignored-files-for-all-repositories-on-your-computer)
+  or merge these rules into your project-specific templates if you want to use
+  them permanently.
+- [`community`](./community) contains specialized templates for other popular
+  languages, tools and project, which don't currently belong in the mainstream
+  templates. These should be added to your project-specific templates when you
+  decide to adopt the framework or tool.
+
+## What makes a good template?
+
+A template should contain a set of rules to help Git repositories work with a
+specific programming language, framework, tool or environment.
+
+If it's not possible to curate a small set of useful rules for this situation,
+then the template is not a good fit for this collection.
+
+If a template is mostly a list of files installed by a particular version of
+some software (e.g. a PHP framework), it could live under the `community`
+directory. See [versioned templates](#versioned-templates) for more details.
+
+If you have a small set of rules, or want to support a technology that is not
+widely in use, and still believe this will be helpful to others, please read the
+section about [specialized templates](#specialized-templates) for more details.
+
+Include details when opening pull request if the template is important and visible. We
+may not accept it immediately, but we can promote it to the root at a later date
+based on interest.
+
+Please also understand that we canâ€™t list every tool that ever existed.
+Our aim is to curate a collection of the _most common and helpful_ templates,
+not to make sure we cover every project possible. If we choose not to
+include your language, tool, or project, itâ€™s not because itâ€™s not awesome.
+
+## Contributing guidelines
+
+Weâ€™d love for you to help us improve this project. To help us keep this collection
+high quality, we request that contributions adhere to the following guidelines.
+
+- **Provide a link to the application or projectâ€™s homepage**. Unless itâ€™s
+  extremely popular, thereâ€™s a chance the maintainers donâ€™t know about or use
+  the language, framework, editor, app, or project your change applies to.
+
+- **Provide links to documentation** supporting the change youâ€™re making.
+  Current, canonical documentation mentioning the files being ignored is best.
+  If documentation isnâ€™t available to support your change, do the best you can
+  to explain what the files being ignored are for.
+
+- **Explain why youâ€™re making a change**. Even if it seems self-evident, please
+  take a sentence or two to tell us why your change or addition should happen.
+  Itâ€™s especially helpful to articulate why this change applies to _everyone_
+  who works with the applicable technology, rather than just you or your team.
+
+- **Please consider the scope of your change**. If your change is specific to a
+  certain language or framework, then make sure the change is made to the
+  template for that language or framework, rather than to the template for an
+  editor, tool, or operating system.
+
+- **Please only modify _one template_ per pull request**. This helps keep pull
+  requests and feedback focused on a specific project or technology.
+
+In general, the more you can do to help us understand the change youâ€™re making,
+the more likely weâ€™ll be to accept your contribution quickly.
+
+## Versioned templates
+
+Some templates can change greatly between versions, and if you wish to contribute
+to this repository we need to follow this specific flow:
+
+- the template at the root should be the current supported version
+- the template at the root should not have a version in the filename (i.e.
+  "evergreen")
+- previous versions of templates should live under `community/`
+- previous versions of the template should embed the version in the filename,
+  for readability
+
+This helps ensure users get the latest version (because they'll use whatever is
+at the root) but helps maintainers support older versions still in the wild.
+
+## Specialized templates
+
+If you have a template that you would like to contribute, but it isn't quite
+mainstream, please consider adding this to the `community` directory under a
+folder that best suits where it belongs.
+
+The rules in your specialized template should be specific to the framework or
+tool, and any additional templates should be mentioned in a comment in the
+header of the template.
+
+For example, this template might live at `community/DotNet/InforCRM.gitignore`:
+
+```gitignore
+# gitignore template for InforCRM (formerly SalesLogix)
+# website: https://www.infor.com/product-summary/cx/infor-crm/
+#
+# Recommended: VisualStudio.gitignore
+
+# Ignore model files that are auto-generated
+ModelIndex.xml
+ExportedFiles.xml
+
+# Ignore deployment files
+[Mm]odel/[Dd]eployment
+
+# Force include portal SupportFiles
+!Model/Portal/*/SupportFiles/[Bb]in/
+!Model/Portal/PortalTemplates/*/SupportFiles/[Bb]in
+```
+
+## Contributing workflow
+
+Hereâ€™s how we suggest you go about proposing a change to this project:
+
+1. [Fork this project][fork] to your account.
+2. [Create a branch][branch] for the change you intend to make.
+3. Make your changes to your fork.
+4. [Send a pull request][pr] from your forkâ€™s branch to our `main` branch.
+
+Using the web-based interface to make changes is fine too, and will help you
+by automatically forking the project and prompting to send a pull request too.
+
+[fork]: https://help.github.com/articles/fork-a-repo/
+[branch]: https://help.github.com/articles/creating-and-deleting-branches-within-your-repository
+[pr]: https://help.github.com/articles/using-pull-requests/
+
+## License
+
+[CC0-1.0](./LICENSE).
+
+
+
+================================================
+FILE: CONTRIBUTING.md
+================================================
+# Contributing guidelines
+
+Weâ€™d love you to help us improve this project. To help us keep this collection
+high quality, we request that contributions adhere to the following guidelines.
+
+- **Provide a link to the application or projectâ€™s homepage**. Unless itâ€™s
+  extremely popular, thereâ€™s a chance the maintainers donâ€™t know about or use
+  the language, framework, editor, app, or project your change applies to.
+
+- **Provide links to documentation** supporting the change youâ€™re making.
+  Current, canonical documentation mentioning the files being ignored is best.
+  If documentation isnâ€™t available to support your change, do the best you can
+  to explain what the files being ignored are for.
+
+- **Explain why youâ€™re making a change**. Even if it seems self-evident, please
+  take a sentence or two to tell us why your change or addition should happen.
+  Itâ€™s especially helpful to articulate why this change applies to *everyone*
+  who works with the applicable technology, rather than just you or your team.
+
+- **Please consider the scope of your change**. If your change specific to a
+  certain language or framework, then make sure the change is made to the
+  template for that language or framework, rather than to the template for an
+  editor, tool, or operating system.
+
+- **Please only modify *one template* per pull request**. This helps keep pull
+  requests and feedback focused on a specific project or technology.
+
+In general, the more you can do to help us understand the change youâ€™re making,
+the more likely weâ€™ll be to accept your contribution quickly.
+
+If a template is mostly a list of files installed by a particular version of
+some software (e.g. a PHP framework) then it's brittle and probably no more
+helpful than a simple `ls`. If it's not possible to curate a small set of
+useful rules, then the template might not be a good fit for this collection.
+
+Please also understand that we canâ€™t list every tool that ever existed.
+Our aim is to curate a collection of the *most common and helpful* templates,
+not to make sure we cover every project possible. If we choose not to
+include your language, tool, or project, itâ€™s not because itâ€™s not awesome.
+
+
+
+================================================
+FILE: LICENSE
+================================================
+CC0 1.0 Universal
+
+Statement of Purpose
+
+The laws of most jurisdictions throughout the world automatically confer
+exclusive Copyright and Related Rights (defined below) upon the creator and
+subsequent owner(s) (each and all, an "owner") of an original work of
+authorship and/or a database (each, a "Work").
+
+Certain owners wish to permanently relinquish those rights to a Work for the
+purpose of contributing to a commons of creative, cultural and scientific
+works ("Commons") that the public can reliably and without fear of later
+claims of infringement build upon, modify, incorporate in other works, reuse
+and redistribute as freely as possible in any form whatsoever and for any
+purposes, including without limitation commercial purposes. These owners may
+contribute to the Commons to promote the ideal of a free culture and the
+further production of creative, cultural and scientific works, or to gain
+reputation or greater distribution for their Work in part through the use and
+efforts of others.
+
+For these and/or other purposes and motivations, and without any expectation
+of additional consideration or compensation, the person associating CC0 with a
+Work (the "Affirmer"), to the extent that he or she is an owner of Copyright
+and Related Rights in the Work, voluntarily elects to apply CC0 to the Work
+and publicly distribute the Work under its terms, with knowledge of his or her
+Copyright and Related Rights in the Work and the meaning and intended legal
+effect of CC0 on those rights.
+
+1. Copyright and Related Rights. A Work made available under CC0 may be
+protected by copyright and related or neighboring rights ("Copyright and
+Related Rights"). Copyright and Related Rights include, but are not limited
+to, the following:
+
+  i. the right to reproduce, adapt, distribute, perform, display, communicate,
+  and translate a Work;
+
+  ii. moral rights retained by the original author(s) and/or performer(s);
+
+  iii. publicity and privacy rights pertaining to a person's image or likeness
+  depicted in a Work;
+
+  iv. rights protecting against unfair competition in regards to a Work,
+  subject to the limitations in paragraph 4(a), below;
+
+  v. rights protecting the extraction, dissemination, use and reuse of data in
+  a Work;
+
+  vi. database rights (such as those arising under Directive 96/9/EC of the
+  European Parliament and of the Council of 11 March 1996 on the legal
+  protection of databases, and under any national implementation thereof,
+  including any amended or successor version of such directive); and
+
+  vii. other similar, equivalent or corresponding rights throughout the world
+  based on applicable law or treaty, and any national implementations thereof.
+
+2. Waiver. To the greatest extent permitted by, but not in contravention of,
+applicable law, Affirmer hereby overtly, fully, permanently, irrevocably and
+unconditionally waives, abandons, and surrenders all of Affirmer's Copyright
+and Related Rights and associated claims and causes of action, whether now
+known or unknown (including existing as well as future claims and causes of
+action), in the Work (i) in all territories worldwide, (ii) for the maximum
+duration provided by applicable law or treaty (including future time
+extensions), (iii) in any current or future medium and for any number of
+copies, and (iv) for any purpose whatsoever, including without limitation
+commercial, advertising or promotional purposes (the "Waiver"). Affirmer makes
+the Waiver for the benefit of each member of the public at large and to the
+detriment of Affirmer's heirs and successors, fully intending that such Waiver
+shall not be subject to revocation, rescission, cancellation, termination, or
+any other legal or equitable action to disrupt the quiet enjoyment of the Work
+by the public as contemplated by Affirmer's express Statement of Purpose.
+
+3. Public License Fallback. Should any part of the Waiver for any reason be
+judged legally invalid or ineffective under applicable law, then the Waiver
+shall be preserved to the maximum extent permitted taking into account
+Affirmer's express Statement of Purpose. In addition, to the extent the Waiver
+is so judged Affirmer hereby grants to each affected person a royalty-free,
+non transferable, non sublicensable, non exclusive, irrevocable and
+unconditional license to exercise Affirmer's Copyright and Related Rights in
+the Work (i) in all territories worldwide, (ii) for the maximum duration
+provided by applicable law or treaty (including future time extensions), (iii)
+in any current or future medium and for any number of copies, and (iv) for any
+purpose whatsoever, including without limitation commercial, advertising or
+promotional purposes (the "License"). The License shall be deemed effective as
+of the date CC0 was applied by Affirmer to the Work. Should any part of the
+License for any reason be judged legally invalid or ineffective under
+applicable law, such partial invalidity or ineffectiveness shall not
+invalidate the remainder of the License, and in such case Affirmer hereby
+affirms that he or she will not (i) exercise any of his or her remaining
+Copyright and Related Rights in the Work or (ii) assert any associated claims
+and causes of action with respect to the Work, in either case contrary to
+Affirmer's express Statement of Purpose.
+
+4. Limitations and Disclaimers.
+
+  a. No trademark or patent rights held by Affirmer are waived, abandoned,
+  surrendered, licensed or otherwise affected by this document.
+
+  b. Affirmer offers the Work as-is and makes no representations or warranties
+  of any kind concerning the Work, express, implied, statutory or otherwise,
+  including without limitation warranties of title, merchantability, fitness
+  for a particular purpose, non infringement, or the absence of latent or
+  other defects, accuracy, or the present or absence of errors, whether or not
+  discoverable, all to the greatest extent permissible under applicable law.
+
+  c. Affirmer disclaims responsibility for clearing rights of other persons
+  that may apply to the Work or any use thereof, including without limitation
+  any person's Copyright and Related Rights in the Work. Further, Affirmer
+  disclaims responsibility for obtaining any necessary consents, permissions
+  or other rights required for any use of the Work.
+
+  d. Affirmer understands and acknowledges that Creative Commons is not a
+  party to this document and has no duty or obligation with respect to this
+  CC0 or use of the Work.
+
+For more information, please see
+<http://creativecommons.org/publicdomain/zero/1.0/>
+
+
+
+================================================
+FILE: Global/README.md
+================================================
+## Globally Useful gitignores
+
+This directory contains globally useful gitignores,
+e.g. OS-specific and editor specific.
+
+For more on global gitignores:
+<https://help.github.com/en/github/using-git/ignoring-files#configuring-ignored-files-for-all-repositories-on-your-computer>
+
+And a good blog post about 'em:
+<http://augustl.com/blog/2009/global_gitignores>
+
+
+
+================================================
+FILE: .github/PULL_REQUEST_TEMPLATE.md
+================================================
+### Reasons for making this change
+
+_TODO_
+<!---
+Please provide some background for this change.
+--->
+
+### Links to documentation supporting these rule changes
+
+_TODO_
+
+<!---
+Link to the project docs, any existing .gitignore files that project may have in it's own repo, etc
+--->
+
+### If this is a new template
+
+Link to application or projectâ€™s homepage: TODO
+
+### Merge and Approval Steps
+- [ ] Confirm that you've read the [contribution guidelines](https://github.com/github/gitignore/tree/main?tab=readme-ov-file#contributing-guidelines) and ensured your PR aligns
+- [ ] Ensure CI is passing
+- [ ] Get a review and Approval from one of the maintainers
+
+
+
+================================================
+FILE: .github/workflows/stale.yml
+================================================
+name: Stale
+
+# **What it does**: Close pull requests after no updates for 180 days.
+# **Why we have it**: This repository gets a lot of PRs, and the maintainers team is small.
+#                     This helps reduce the open PRs to ones that are most desired by the community.
+# **Who does it impact**: Contributors and maintainers of github/gitignore.
+
+on:
+  schedule:
+    - cron: '20 16 * * *' # Run every day at 16:20 UTC / 8:20 PST
+
+permissions:
+  actions: write
+  contents: write # only for delete-branch option
+  issues: write
+  pull-requests: write
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/stale@5bef64f19d7facfb25b37b414482c7164d639639 # v9.1.0
+        with:
+          stale-pr-message: 'This PR is stale because there have been no updates in 90 days. It will close after 180 days of inactivity. Leave a comment if you want to keep it open :smile:'
+          close-pr-message: 'This PR has been closed because it was inactive for 180 days. If you want to continue working on it, please open a new PR.'
+          days-before-stale: 90
+          days-before-close: 180
+          stale-pr-label: 'stale'
+          exempt-pr-labels: 'keep'
+          close-issue-reason: not_planned
+          ascending: true # Sort PRs by last updated date in ascending order
+          operations-per-run: 300
+
+

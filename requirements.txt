@@ -1,0 +1,16 @@
+# Streamlit Frontend Dependencies
+streamlit>=1.28.0
+requests>=2.31.0
+pandas>=2.0.0
+numpy>=1.24.0
+
+# Gitingest Integration
+gitingest>=0.1.0
+
+# Additional utilities
+python-dateutil>=2.8.2
+urllib3>=2.0.0
+
+# Development and testing (optional)
+pytest>=7.4.0
+pytest-mock>=3.11.0
