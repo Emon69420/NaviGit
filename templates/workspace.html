@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>{{ repo }}</title>
+  <style>
+    body, html { margin: 0; padding: 0; height: 100%; font-family: sans-serif; }
+    .container { display: flex; height: 100vh; }
+    .sidebar { width: 280px; overflow-y: auto; background: #f5f5f5; padding: 10px; border-right: 1px solid #ddd; }
+    .main { flex: 1; display: flex; flex-direction: column; }
+    .code-viewer { flex: 2; padding: 10px; overflow-y: auto; background: #fff; border-bottom: 1px solid #ddd; }
+    .chat { flex: 1; display: flex; flex-direction: column; }
+    .chat-history { flex: 1; overflow-y: auto; padding: 10px; background: #fafafa; }
+    .chat-input { display: flex; border-top: 1px solid #ddd; }
+    .chat-input textarea { flex: 1; resize: none; padding: 10px; border: none; outline: none; }
+    .chat-input button { width: 100px; border: none; background: #007bff; color: white; cursor: pointer; }
+    .chat-input button:hover { background: #0056b3; }
+    ul { list-style: none; padding-left: 20px; }
+    li { cursor: pointer; }
+  </style>
+  <script>
+    function showContent(filename, content) {
+      document.getElementById("code").textContent = content;
+      document.getElementById("current-file").innerText = filename;
+    }
+
+    async function sendMessage() {
+      const input = document.getElementById("chat-input");
+      const message = input.value.trim();
+      if (!message) return;
+
+      // append user message
+      const history = document.getElementById("chat-history");
+      const userMsg = document.createElement("div");
+      userMsg.textContent = "🧑 " + message;
+      history.appendChild(userMsg);
+
+      input.value = "";
+
+      // call backend
+      const res = await fetch("{{ url_for('chat_api', owner=owner, repo=repo) }}", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message })
+      });
+      const data = await res.json();
+
+      const botMsg = document.createElement("div");
+      botMsg.textContent = "🤖 " + data.reply;
+      history.appendChild(botMsg);
+      history.scrollTop = history.scrollHeight;
+    }
+  </script>
+</head>
+<body>
+  <div class="container">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <h3>{{ owner }}/{{ repo }}</h3>
+      <ul>
+        {% macro render_tree(tree, path="") %}
+          {% for key, value in tree.items() %}
+            {% if value is string %}
+              <li onclick="showContent('{{ path ~ key }}', `{{ value|tojson }}`)">📄 {{ key }}</li>
+            {% else %}
+              <li>📂 {{ key }}
+                <ul>
+                  {{ render_tree(value, path ~ key ~ "/") }}
+                </ul>
+              </li>
+            {% endif %}
+          {% endfor %}
+        {% endmacro %}
+        {{ render_tree(file_tree) }}
+      </ul>
+    </div>
+
+    <!-- Main Panel -->
+    <div class="main">
+      <!-- Code Viewer -->
+      <div class="code-viewer">
+        <h3 id="current-file">Select a file</h3>
+        <pre id="code"></pre>
+      </div>
+
+      <!-- Chat Assistant -->
+      <div class="chat">
+        <div id="chat-history" class="chat-history"></div>
+        <div class="chat-input">
+          <textarea id="chat-input" rows="2" placeholder="Ask about this repo..."></textarea>
+          <button onclick="sendMessage()">Send</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

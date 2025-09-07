@@ -124,7 +124,7 @@ def build_prompt(query: str, retrieved: List[Dict]):
 def ask_llm(prompt: str):
     client = OpenAI(
         base_url="https://router.huggingface.co/v1",
-        api_key="API WILL COME HERE",  # replace with your token
+        api_key="HF TOKEN HERE IT COMES",  # replace with your token
     )
     completion = client.chat.completions.create(
         model="openai/gpt-oss-20b",
@@ -176,7 +176,7 @@ def build_or_load(repo_name: str, ingest_file: str):
 # -------------------------------
 
 if __name__ == "__main__":
-    repo_name = input("📂 Enter repo name (e.g., HazMapApp, MedMint): ").strip()
+    repo_name = input("📂 Enter repo name: ").strip()
     ingest_file = find_ingest_file(repo_name)
 
     if not os.path.exists(ingest_file):
