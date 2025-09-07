@@ -1,28 +1,36 @@
 #!/usr/bin/env python3
 """
-Repo-RAG pipeline with FAISS + Graph + HuggingFace OSS LLM
+Multi-Repo RAG pipeline with FAISS + Graph + HuggingFace OSS LLM
 """
 
-import os
-import re
-import faiss
-import pickle
-import numpy as np
-import networkx as nx
+import os, re, json, pickle, faiss, numpy as np, networkx as nx
 from typing import List, Dict
 from sentence_transformers import SentenceTransformer
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from openai import OpenAI
+import glob
+
+
+INDEX_BASE = "indexes"   # root folder for all repos
 
 # -------------------------------
 # 1. Load + Chunk repo ingest
 # -------------------------------
 
+# 1.1 ingestion of stuff
+def find_ingest_file(repo_name: str, folder="gitingest_outputs"):
+    pattern = os.path.join(folder, f"*{repo_name}*.txt")
+    files = glob.glob(pattern)
+    if not files:
+        return None
+    # sort by modification time (latest first)
+    files.sort(key=os.path.getmtime, reverse=True)
+    return files[0]
+
 def load_and_chunk(ingest_file: str, chunk_size=800, overlap=100) -> List[Dict]:
     with open(ingest_file, "r", encoding="utf-8", errors="ignore") as f:
         raw_text = f.read()
 
-    # split at FILE markers
     sections = re.split(r"=+\nFILE:\s+", raw_text)
     chunks = []
 
@@ -75,11 +83,9 @@ def build_graph(chunks: List[Dict]):
         file = c["file"]
         G.add_node(file, type="file")
 
-        # detect imports
         for match in re.finditer(r"import .* from ['\"](.*)['\"]", c["content"]):
             G.add_edge(file, match.group(1), type="IMPORTS")
 
-        # detect functions/classes
         for match in re.finditer(r"(?:def|class|function)\s+(\w+)", c["content"]):
             node_id = f"{file}:{match.group(1)}"
             G.add_node(node_id, type="symbol")
@@ -97,7 +103,6 @@ def retrieve(query: str, model, index, chunks, graph, top_k=5):
 
     results = [chunks[i] for i in I[0]]
 
-    # expand with graph neighbors
     expanded = []
     for r in results:
         f = r["file"]
@@ -113,13 +118,13 @@ def build_prompt(query: str, retrieved: List[Dict]):
     return f"Context:\n{context}\n\nQuestion: {query}"
 
 # -------------------------------
-# 5. LLM call (OSS via HuggingFace router)
+# 5. LLM call
 # -------------------------------
 
 def ask_llm(prompt: str):
     client = OpenAI(
         base_url="https://router.huggingface.co/v1",
-        api_key="hf token",
+        api_key="API WILL COME HERE",  # replace with your token
     )
     completion = client.chat.completions.create(
         model="openai/gpt-oss-20b",
@@ -128,32 +133,60 @@ def ask_llm(prompt: str):
     return completion.choices[0].message.content
 
 # -------------------------------
+# 6. Build or Load per repo
+# -------------------------------
+
+def build_or_load(repo_name: str, ingest_file: str):
+    repo_dir = os.path.join(INDEX_BASE, repo_name)
+    os.makedirs(repo_dir, exist_ok=True)
+
+    index_file = os.path.join(repo_dir, "repo.index")
+    chunks_file = os.path.join(repo_dir, "chunks.json")
+    graph_file = os.path.join(repo_dir, "graph.pkl")
+
+    build_mode = not (os.path.exists(index_file) and os.path.exists(chunks_file) and os.path.exists(graph_file))
+
+    if build_mode:
+        print(f"🛠️ Building FAISS + Graph for {repo_name}...")
+        chunks = load_and_chunk(ingest_file)
+        model, embeddings = embed_chunks(chunks)
+        index = build_faiss(embeddings)
+        graph = build_graph(chunks)
+
+        faiss.write_index(index, index_file)
+        with open(chunks_file, "w", encoding="utf-8") as f:
+            json.dump(chunks, f)
+        with open(graph_file, "wb") as f:
+            pickle.dump(graph, f)
+
+        print(f"💾 Saved index for {repo_name}")
+    else:
+        print(f"📂 Loading saved index for {repo_name}...")
+        index = faiss.read_index(index_file)
+        with open(chunks_file, "r", encoding="utf-8") as f:
+            chunks = json.load(f)
+        with open(graph_file, "rb") as f:
+            graph = pickle.load(f)
+        model = SentenceTransformer("all-MiniLM-L6-v2", device="cpu")
+
+    return model, index, chunks, graph
+
+# -------------------------------
 # Main
 # -------------------------------
 
 if __name__ == "__main__":
-    INGEST_FILE = "gitingest_outputs/Emon69420_MedMint_20250906_195028.txt"  # <-- update path
+    repo_name = input("📂 Enter repo name (e.g., HazMapApp, MedMint): ").strip()
+    ingest_file = find_ingest_file(repo_name)
 
-    if not os.path.exists(INGEST_FILE):
-        print(f"❌ Ingest file not found: {INGEST_FILE}")
+    if not os.path.exists(ingest_file):
+        print(f"❌ Ingest file not found: {ingest_file}")
         exit(1)
+    
+    print(f"📄 Using ingest file: {ingest_file}")
+    model, index, chunks, graph = build_or_load(repo_name, ingest_file)
 
-    print("📂 Loading repo ingest...")
-    chunks = load_and_chunk(INGEST_FILE)
-    print(f"✅ {len(chunks)} chunks created")
-
-    if not chunks:
-        print("❌ No chunks created. Check ingest file format.")
-        exit(1)
-
-    print("🔎 Embedding chunks...")
-    model, embeddings = embed_chunks(chunks)
-
-    print("📦 Building FAISS + Graph...")
-    index = build_faiss(embeddings)
-    graph = build_graph(chunks)
-
-    print("✅ Setup complete! Ask me questions about the repo.")
+    print(f"✅ Ready! Ask me questions about {repo_name}.")
     while True:
         q = input("\n❓ Ask about the repo (or 'exit'): ").strip()
         if q.lower() in ["exit", "quit"]:
