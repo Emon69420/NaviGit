@@ -3,28 +3,36 @@
 <head>
   <meta charset="UTF-8">
   <title>Loading Repo</title>
-  <style>
-    .bubble {
-      width: 100px;
-      height: 100px;
-      background: blue;
-      border-radius: 50%;
-      animation: bounce 1s infinite alternate;
-    }
-    @keyframes bounce {
-      from { transform: translateY(0); }
-      to { transform: translateY(-30px); }
-    }
-  </style>
+  <link rel="stylesheet" href="{{ url_for('static', filename='loading-dark.css') }}">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>
 </head>
 <body>
-  <h1>Preparing {{ repo }}...</h1>
-  <div class="bubble"></div>
-  <p>AI is analyzing your repo, please wait.</p>
+
+  <div id="lottie-loader" style="width:300px;height:300px;margin:40px auto;"></div>
+  <h1>Analyzing The Codebase</h1>
   <script>
-    setTimeout(() => {
-      window.location.href = "/workspace/{{ repo }}";
-    }, 3000); // auto redirect after 3s
+    // Lottie animation
+    lottie.loadAnimation({
+      container: document.getElementById('lottie-loader'),
+      renderer: 'svg',
+      loop: true,
+      autoplay: true,
+      path: "{{ url_for('static', filename='Looping Flower (1).json') }}"
+    });
+
+    const owner = "{{ owner }}";
+    const repo = "{{ repo }}";
+    async function pollStatus() {
+      const res = await fetch(`/api/index_status/${owner}/${repo}`);
+      const data = await res.json();
+      if (data.ready) {
+        window.location.href = `/workspace/${owner}/${repo}`;
+      } else {
+        setTimeout(pollStatus, 1500);
+      }
+    }
+    fetch(`/api/build_index/${owner}/${repo}`, {method: 'POST'});
+    pollStatus();
   </script>
 </body>
 </html>

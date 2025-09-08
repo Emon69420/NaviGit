@@ -124,12 +124,43 @@ class RepoIngestor:
                     pass
 
     # ------------------------------
+    # Check if repo index exists (chunks, graph, vectors)
+    # ------------------------------
+    def repo_index_exists(self, repo: str, indexes_dir="indexes"):
+        """
+        Check if all index files exist for this repo in indexes/{repo}/.
+        """
+        repo_dir = Path(indexes_dir) / repo
+        return all([
+            (repo_dir / "repo.index").exists(),
+            (repo_dir / "chunks.json").exists(),
+            (repo_dir / "graph.pkl").exists()
+        ])
+
+    # ------------------------------
+    # Delete repo index folder
+    # ------------------------------
+    def delete_repo_index(self, repo: str, indexes_dir="indexes"):
+        repo_dir = Path(indexes_dir) / repo
+        if repo_dir.exists():
+            logger.info(f"🗑️ Deleting index folder: {repo_dir}")
+            shutil.rmtree(repo_dir, onerror=handle_remove_readonly)
+            return True
+        return False
+
+    # ------------------------------
     # High level API
     # ------------------------------
-    def ingest_repo(self, repo_url: str, output_dir="gitingest_outputs", clone=True) -> Dict[str, Any]:
-        """Save gitingest output and optionally clone repo locally."""
+    def ingest_repo(self, repo_url: str, output_dir="gitingest_outputs", clone=True, indexes_dir="indexes") -> Dict[str, Any]:
+        """Save gitingest output and optionally clone repo locally. Also checks and deletes existing index data."""
         Path(output_dir).mkdir(exist_ok=True)
         owner, repo = self.parse_github_url(repo_url)
+        repo_name = f"{owner}_{repo}"
+
+        # Check and delete existing index data if present
+        if self.repo_index_exists(repo, indexes_dir=indexes_dir):
+            self.delete_repo_index(repo, indexes_dir=indexes_dir)
+
         timestamp = __import__("datetime").datetime.now().strftime("%Y%m%d_%H%M%S")
         output_file = f"{output_dir}/{owner}_{repo}_{timestamp}.txt"
 

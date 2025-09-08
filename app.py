@@ -11,12 +11,27 @@ import shutil
 from pathlib import Path
 import tempfile
 from collections import defaultdict
+from ingest import RepoIngestor
+from rag_repo import build_or_load, find_ingest_file
+import rag_repo
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
+app.secret_key = "your_secret_key"
+
+# Cache loaded models per repo for efficiency
+loaded_repos = {}
+
+def get_repo_objects(repo):
+    if repo not in loaded_repos:
+        ingest_file = rag_repo.find_ingest_file(repo)
+        if not ingest_file:
+            raise Exception(f"Ingest file not found for {repo}")
+        loaded_repos[repo] = rag_repo.build_or_load(repo, ingest_file)
+    return loaded_repos[repo]
 
 def nested_dict():
     return defaultdict(nested_dict)
@@ -68,10 +83,11 @@ def index():
     repos = list_available_repos()
     return render_template("index.html", repos=repos)
 
-@app.route("/loading/<repo>")
-def loading(repo):
-    # You can add async RAG build logic here
-    return render_template("loading.html", repo=repo)
+
+
+@app.route('/loading/<owner>/<repo>')
+def loading(owner, repo):
+    return render_template('loading.html', owner=owner, repo=repo)
 
 @app.route("/workspace/<owner>/<repo>")
 def workspace(owner, repo):
@@ -90,6 +106,63 @@ def chat_api(owner, repo):
     # TODO: handle LLM query here with the repo context
     return jsonify({"reply": f"🤖 (LLM would answer about {owner}/{repo}): {user_message}"})
 
+@app.route('/ingest', methods=['POST'])
+def ingest_repo():
+    data = request.get_json()
+    repo_link = data.get('repo_link')
+    processor = RepoIngestor()  # Add token if needed
+    result = processor.ingest_repo(repo_link)
+    return jsonify(result)
+
+@app.route('/api/build_index/<owner>/<repo>', methods=['POST'])
+def build_index(owner, repo):
+    repo_ingestor = RepoIngestor()
+    if not repo_ingestor.repo_index_exists(repo):
+        ingest_file = find_ingest_file(repo)
+        if ingest_file:
+            build_or_load(repo, ingest_file)
+            return jsonify({'started': True, 'status': 'built'})
+        else:
+            return jsonify({'started': False, 'error': 'No ingest file found'}), 404
+    return jsonify({'started': False, 'status': 'already exists'})
+
+@app.route('/api/index_status/<owner>/<repo>')
+def index_status(owner, repo):
+    repo_ingestor = RepoIngestor()
+    ready = repo_ingestor.repo_index_exists(repo)
+    return jsonify({'ready': ready})
+
+@app.route("/chat/<repo>", methods=["POST"])
+def chat(repo):
+    data = request.get_json()
+    message = data.get("message", "")
+
+    # Maintain chat history in session per repo
+    session_key = f"chat_history_{repo}"
+    history = session.get(session_key, [])
+    history.append({"role": "user", "content": message})
+    history = history[-5:]
+    session[session_key] = history
+
+    # Build context from last 5 messages
+    context = "\n".join([f"{m['role']}: {m['content']}" for m in history])
+
+    # Load RAG objects for this repo
+    try:
+        model, index, chunks, graph = get_repo_objects(repo)
+    except Exception as e:
+        return jsonify({"reply": f"Error: {str(e)}"})
+
+    # Retrieve relevant chunks and build prompt
+    retrieved = rag_repo.retrieve(message, model, index, chunks, graph, top_k=5)
+    prompt = f"Chat history:\n{context}\n\n" + rag_repo.build_prompt(message, retrieved)
+    answer = rag_repo.ask_llm(prompt)
+
+    # Add bot reply to history
+    history.append({"role": "assistant", "content": answer})
+    session[session_key] = history[-5:]
+
+    return jsonify({"reply": answer})
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)

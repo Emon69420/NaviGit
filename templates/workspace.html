@@ -2,28 +2,11 @@
 <html>
 <head>
   <title>{{ repo }}</title>
-  <style>
-    body, html { margin: 0; padding: 0; height: 100%; font-family: sans-serif; }
-    .container { display: flex; height: 100vh; }
-    .sidebar { width: 280px; overflow-y: auto; background: #f5f5f5; padding: 10px; border-right: 1px solid #ddd; }
-    .main { flex: 1; display: flex; flex-direction: column; }
-    .code-viewer { flex: 2; display: flex; flex-direction: column; border-bottom: 1px solid #ddd; }
-    .chat { flex: 1; display: flex; flex-direction: column; }
-    .chat-history { flex: 1; overflow-y: auto; padding: 10px; background: #fafafa; }
-    .chat-input { display: flex; border-top: 1px solid #ddd; }
-    .chat-input textarea { flex: 1; resize: none; padding: 10px; border: none; outline: none; }
-    .chat-input button { width: 100px; border: none; background: #007bff; color: white; cursor: pointer; }
-    .chat-input button:hover { background: #0056b3; }
-    ul { list-style: none; padding-left: 20px; margin: 0; }
-    li { cursor: pointer; }
-    li.folder > span { font-weight: bold; }
-    h3 { margin: 0; padding: 10px; border-bottom: 1px solid #ddd; background: #f9f9f9; }
-    .CodeMirror { height: 100%; font-size: 14px; }
-  </style>
+  <link rel="stylesheet" href="{{ url_for('static', filename='workspace-dark.css') }}">
 
   <!-- CodeMirror assets -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.9/codemirror.min.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.9/theme/eclipse.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.9/theme/material-darker.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.9/codemirror.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.9/mode/python/python.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.9/mode/javascript/javascript.min.js"></script>
@@ -34,60 +17,72 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.9/mode/htmlmixed/htmlmixed.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.9/mode/jsx/jsx.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.9/mode/javascript/typescript.min.js"></script>
+
 </head>
 <body>
-  <div class="container">
-    <!-- Sidebar -->
+  <div class="vscode-titlebar">
+    <span class="vscode-dot red"></span>
+    <span class="vscode-dot yellow"></span>
+    <span class="vscode-dot green"></span>
+    <span class="vscode-title">{{ owner }}/{{ repo }}</span>
+  </div>
+  <div class="vscode-main">
+    <!-- Activity Bar -->
+    <div class="activitybar">
+      <div id="explorer-toggle" class="activity-icon active" title="Explorer" onclick="toggleSidebar()">&#9776;</div>
+      <div class="activity-icon" title="Search">&#128269;</div>
+      <div class="activity-icon" title="Source Control">&#128736;</div>
+      <div class="activity-icon" title="Run">&#9654;</div>
+      <!-- Add more icons as needed -->
+    </div>
+    <!-- Sidebar (Explorer) -->
     <div class="sidebar">
-      <h3>{{ owner }}/{{ repo }}</h3>
-      <ul>
+      <div class="sidebar-title">EXPLORER</div>
+      <ul class="file-tree">
         {% macro render_tree(tree, path="") %}
-          {% for key, value in tree.items() %}
-            {% if value is string %}
-              <li class="file" onclick="showContent('{{ path ~ key }}')">📄 {{ key }}</li>
-              <script>
-                window.fileContents = window.fileContents || {};
-                window.fileContents["{{ path ~ key }}"] = {{ value|tojson }};
-              </script>
-            {% else %}
-              <li class="folder">
-                <span onclick="toggleFolder(this)">📂 {{ key }}</span>
-                <ul style="display:none;">
-                  {{ render_tree(value, path ~ key ~ "/") }}
-                </ul>
-              </li>
-            {% endif %}
+          {# Render folders first #}
+          {% for key, value in tree.items() if value is not string %}
+            <li class="folder">
+              <span onclick="toggleFolder(this)">📁 {{ key }}</span>
+              <ul style="display:none;">
+                {{ render_tree(value, path ~ key ~ "/") }}
+              </ul>
+            </li>
+          {% endfor %}
+          {# Then render files #}
+          {% for key, value in tree.items() if value is string %}
+            <li class="file" onclick="showContent('{{ path ~ key }}')">
+              <span class="file-icon">📄</span> {{ key }}
+            </li>
+            <script>
+              window.fileContents = window.fileContents || {};
+              window.fileContents["{{ path ~ key }}"] = {{ value|tojson }};
+            </script>
           {% endfor %}
         {% endmacro %}
         {{ render_tree(file_tree) }}
       </ul>
     </div>
-
-    <!-- Main Panel -->
-    <div class="main">
-      <!-- Code Viewer -->
-      <div class="code-viewer">
-        <h3 id="current-file">Select a file</h3>
-        <textarea id="code-editor"></textarea>
-      </div>
-
-      <!-- Chat Assistant -->
-      <div class="chat">
-        <div id="chat-history" class="chat-history"></div>
-        <div class="chat-input">
-          <textarea id="chat-input" rows="2" placeholder="Ask about this repo..."></textarea>
-          <button onclick="sendMessage()">Send</button>
-        </div>
+    <!-- Code Editor -->
+    <div class="code-panel">
+      <div id="current-file" class="current-file">Select a file</div>
+      <textarea id="code-editor"></textarea>
+    </div>
+    <div class="resizer" id="chat-resizer"></div>
+    <div class="chat-panel">
+      <div id="chat-history" class="chat-history"></div>
+      <div class="chat-input">
+        <textarea id="chat-input" rows="2" placeholder="Ask about this repo..."></textarea>
+        <button onclick="sendMessage()">Send</button>
       </div>
     </div>
   </div>
-
   <script>
-    // Initialize CodeMirror
+    // CodeMirror
     let editor = CodeMirror.fromTextArea(document.getElementById("code-editor"), {
       lineNumbers: true,
       readOnly: true,
-      theme: "eclipse",
+      theme: "material-darker",
       mode: "null"
     });
 
@@ -113,36 +108,56 @@
 
     function toggleFolder(el) {
       let sublist = el.nextElementSibling;
-      if (sublist.style.display === "none") {
+      if (!sublist) return;
+      if (sublist.style.display === "none" || sublist.style.display === "") {
         sublist.style.display = "block";
       } else {
         sublist.style.display = "none";
       }
     }
 
+    function toggleSidebar() {
+      document.querySelector('.vscode-main').classList.toggle('collapsed');
+    }
+  </script>
+  <script>
+    const resizer = document.getElementById('chat-resizer');
+    const codePanel = document.querySelector('.code-panel');
+    const chatPanel = document.querySelector('.chat-panel');
+    let isResizing = false;
+
+    resizer.addEventListener('mousedown', function(e) {
+      isResizing = true;
+      document.body.style.cursor = 'ew-resize';
+    });
+
+    document.addEventListener('mousemove', function(e) {
+      if (!isResizing) return;
+      // Calculate new width for chat panel
+      const containerRight = chatPanel.parentElement.getBoundingClientRect().right;
+      let newChatWidth = containerRight - e.clientX;
+      // Set min/max width
+      newChatWidth = Math.max(180, Math.min(12000, newChatWidth));
+      chatPanel.style.width = newChatWidth + 'px';
+      chatPanel.style.flex = 'none';
+    });
+
+    document.addEventListener('mouseup', function(e) {
+      if (isResizing) {
+        isResizing = false;
+        document.body.style.cursor = '';
+      }
+    });
+
     async function sendMessage() {
-      const input = document.getElementById("chat-input");
-      const message = input.value.trim();
-      if (!message) return;
-
-      const history = document.getElementById("chat-history");
-      const userMsg = document.createElement("div");
-      userMsg.textContent = "🧑 " + message;
-      history.appendChild(userMsg);
-
-      input.value = "";
-
-      const res = await fetch("{{ url_for('chat_api', owner=owner, repo=repo) }}", {
+      const message = document.getElementById('chat-input').value;
+      const res = await fetch(`/chat/{{ repo }}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message })
       });
       const data = await res.json();
-
-      const botMsg = document.createElement("div");
-      botMsg.textContent = "🤖 " + data.reply;
-      history.appendChild(botMsg);
-      history.scrollTop = history.scrollHeight;
+      // Handle the response data
     }
   </script>
 </body>

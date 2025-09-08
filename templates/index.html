@@ -27,22 +27,70 @@
 
     <!-- Repo input -->
     <div class="repo-input-container">
-      <form method="POST" action="/">
-        <input type="text" name="repo_link" placeholder="Paste GitHub repo link..." />
-        <button type="submit">Ingest Repo</button>
+      <form id="ingest-form">
+        <input type="text" id="repo-link" name="repo-link" placeholder="Enter GitHub repo URL" required>
+        <button type="submit" id="ingest-btn">Ingest</button>
       </form>
+      <div id="loading" style="display:none;">
+        <div class="spinner"></div>
+      </div>
+      <div id="result"></div>
     </div>
 
     <div class="repos-section">
-      <h2>Your Repos</h2>
+
       <div class="repos-grid">
         {% for repo_key in repos %}
-          <a href="{{ url_for('workspace', owner=repo_key.split('/')[0], repo=repo_key.split('/')[1]) }}" class="repo-card">
+          <a href="{{ url_for('loading', owner=repo_key.split('/')[0], repo=repo_key.split('/')[1]) }}" class="repo-card">
             <div class="repo-title">{{ repo_key }}</div>
           </a>
         {% endfor %}
       </div>
     </div>
   </div>
+  <style>
+  .spinner {
+    border: 6px solid #f3f3f3;
+    border-top: 6px solid #3498db;
+    border-radius: 50%;
+    width: 15px;
+    height: 15px;
+    animation: spin 1s linear infinite;
+
+  }
+  @keyframes spin {
+    0% { transform: rotate(0deg);}
+    100% { transform: rotate(360deg);}
+  }
+  </style>
+  <script>
+  document.getElementById('ingest-form').onsubmit = async function(e) {
+    e.preventDefault();
+    document.getElementById('loading').style.display = 'block';
+    document.getElementById('ingest-btn').style.display = 'none';
+    document.getElementById('result').innerText = '';
+    const repo = document.getElementById('repo-link').value;
+    try {
+      const res = await fetch('/ingest', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({repo_link: repo})
+      });
+      const data = await res.json();
+      // Hide spinner and reload page after ingestion
+      document.getElementById('loading').style.display = 'none';
+      if (data.success) {
+        location.reload();
+      } else {
+        document.getElementById('result').innerText = 'Error: ' + data.error;
+        document.getElementById('ingest-btn').style.display = '';
+      }
+    } catch (err) {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('result').innerText = 'Request failed.';
+      document.getElementById('ingest-btn').style.display = '';
+    }
+  };
+  </script>
 </body>
 </html>
