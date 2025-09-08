@@ -124,7 +124,7 @@ def build_prompt(query: str, retrieved: List[Dict]):
 def ask_llm(prompt: str):
     client = OpenAI(
         base_url="https://router.huggingface.co/v1",
-        api_key="HF TOKEN HERE IT COMES",  # replace with your token
+        api_key="hugging face token here",  # replace with your token
     )
     completion = client.chat.completions.create(
         model="openai/gpt-oss-20b",

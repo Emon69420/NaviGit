@@ -105,16 +105,22 @@ body, html {
   }
   
   .repo-list ul {
-    list-style: none;
+    display: flex;          /* activate flexbox */
+    flex-wrap: wrap;        /* wrap the items */
+    gap: 20px;              /* space between items (will be overridden below) */
+    justify-content: space-between; /* keep items spread out */
     padding: 0;
     margin: 0;
   }
   
   .repo-list li {
+    flex: 0 0 calc((100% - 2 * 20px) / 3);  /* 20px is the gap, adjust if you change it */   
+    min-width: 180px;                        /* so the card never gets too small */
+    max-width: 100%;                         /* for very small screens */
     background: rgba(255,255,255,0.1);
     padding: 12px;
     border-radius: 8px;
-    margin-bottom: 10px;
+    margin: 0;           /* we use gap in the UL, not margin */
   }
   
   .repo-list li a {
@@ -176,6 +182,7 @@ body, html {
   .repos-section {
     margin-top: 40px;
     text-align: center;
+    max-width: 100%;
   }
   
   .repos-section h2 {
@@ -187,30 +194,49 @@ body, html {
   
   .repos-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 20px;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 50px;
     justify-items: center;
     padding: 0 20px;
   }
   
   .repo-card {
-    display: flex;
+    /* ---- Layout & sizing ------------------------------------------------ */
+    display: flex;                /* keep the flex‑row from the original     */
+    flex-direction: column;       /* vertical stacking of card content       */
+    width: 100%;                  /* full width inside the grid column       */
+    max-width: 260px;             /* caps the card width                     */
+    height: 50%;                 /* takes the full height of the grid cell  */
+          /* makes it roughly square (remove if not wanted) */
+  
+    /* ---- Cosmetics ----------------------------------------------------- */
+    background: #ffffff20;          /* solid dark background – same as input   */
+    color: white;                 /* bright text on dark bg                  */
+    border-radius: 12px;          /* same rounded corners as the input box   */
+    box-shadow: 0 2px 6px rgba(0,0,0,.3);  /* subtle lift effect                    */
+    padding: 16px;                /* generous internal spacing                */
+    overflow: hidden;             /* clip any overflowing content           */
+    text-align: center;
+    flex-direction: column;
+    text-decoration: none;      /* Just in case */
     align-items: center;
     justify-content: center;
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    border-radius: 12px;
-    padding: 30px 20px;
-    width: 100%;
-    max-width: 320px;
-    color: white;
-    font-size: 18px;
-    font-weight: 500;
-    text-decoration: none;
-    transition: all 0.25s ease;
+    /* ---- Transition / hover tweak ------------------------------------- */
+    transition: transform .15s ease, box-shadow .15s ease;
   }
+
+/* Link inside the card */
+.repo-card a {
+    display: flex;           /* Makes the link a flex item */
+    align-items: center;     /* Centers its own text vertically */
+    text-decoration: none;   /* No underline */
+    color: inherit;          /* Keeps the card’s color (white) */
+    width: 100%;             /* Optional: fill the card if you only have one link */
+  }
+
   
-  .repo-card:hover {
-    background: rgba(255, 255, 255, 0.15);
-    transform: translateY(-4px);
-  }
+
+.repo-card:hover {
+transform: translateY(-3px);  /* a tiny lift on hover */
+box-shadow: 0 4px 12px rgba(0,0,0,.35);
+}
