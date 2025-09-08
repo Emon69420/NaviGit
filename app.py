@@ -21,31 +21,28 @@ app = Flask(__name__)
 def nested_dict():
     return defaultdict(nested_dict)
 
-def build_tree_from_ingest(ingest_file):
-    try:
-        with open(ingest_file, "r", encoding="utf-8") as f:
-            raw = f.read()
-    except UnicodeDecodeError as e:
-        # fallback: replace only if truly broken
-        with open(ingest_file, "r", encoding="utf-8", errors="replace") as f:
-            raw = f.read()
-
-    files = re.split(r"=+\nFILE:\s+", raw)
+def build_tree_from_local(repo_path: str):
+    """
+    Walk the local repo and return a nested dict {folder: {sub: {files}}}.
+    """
     tree = nested_dict()
+    for root, dirs, files in os.walk(repo_path):
+        rel_path = os.path.relpath(root, repo_path)
+        if rel_path == ".":
+            current = tree
+        else:
+            parts = rel_path.split(os.sep)
+            current = tree
+            for p in parts:
+                current = current[p]
 
-    for section in files:
-        if not section.strip():
-            continue
-        lines = section.splitlines()
-        filepath = lines[0].strip()
-        content = "\n".join(lines[1:])
-
-        parts = filepath.split("/")
-        d = tree
-        for p in parts[:-1]:
-            d = d[p]
-        d[parts[-1]] = content  
-
+        for f in files:
+            try:
+                with open(os.path.join(root, f), "r", encoding="utf-8", errors="replace") as fh:
+                    content = fh.read()
+            except Exception as e:
+                content = f"⚠️ Error reading file: {e}"
+            current[f] = content
     return tree
     
 def list_available_repos(output_dir="gitingest_outputs"):
@@ -78,14 +75,11 @@ def loading(repo):
 
 @app.route("/workspace/<owner>/<repo>")
 def workspace(owner, repo):
-    # TODO: fetch file tree + connect to chat backend
-    repos = list_available_repos()
-    repo_key = f"{owner}/{repo}"
-    ingest_file = repos.get(repo_key)
-    if not ingest_file:
-        return f"❌ Repo {repo_key} not found", 404
+    repo_path = os.path.join("my_repos", owner, repo)
+    if not os.path.exists(repo_path):
+        return f"❌ Repo {owner}/{repo} not found locally", 404
 
-    file_tree = build_tree_from_ingest(ingest_file)
+    file_tree = build_tree_from_local(repo_path)
     return render_template("workspace.html", owner=owner, repo=repo, file_tree=file_tree)
 
 @app.route("/api/chat/<owner>/<repo>", methods=["POST"])
