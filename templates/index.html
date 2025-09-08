@@ -11,7 +11,7 @@
 <body>
   <!-- Header -->
   <header>
-    <div class="logo">❤️ NaviGit</div>
+    <div class="logo">NaviGit</div>
     <nav>
       <a href="#">Docs</a>
       <a href="#">Pricing</a>
@@ -22,27 +22,26 @@
 
   <!-- Main -->
   <div class="main">
-    <h1>Build something ❤️ NaviGit</h1>
+    <h1>Get the gist before the first sip</h1>
     <p>Ingest repos and chat with your code</p>
 
     <!-- Repo input -->
-    <form method="POST" class="input-box">
-      <input type="text" name="repo_link" placeholder="Paste GitHub repo link..." required>
-      <button type="submit">Ingest Repo</button>
-    </form>
+    <div class="repo-input-container">
+      <form method="POST" action="/">
+        <input type="text" name="repo_link" placeholder="Paste GitHub repo link..." />
+        <button type="submit">Ingest Repo</button>
+      </form>
+    </div>
 
-    <!-- Repo list -->
-    <div class="repo-list">
+    <div class="repos-section">
       <h2>Your Repos</h2>
-      <ul>
-        {% for repo_key, path in repos.items() %}
-          <li>
-            <a href="{{ url_for('workspace', owner=repo_key.split('/')[0], repo=repo_key.split('/')[1]) }}">
-              {{ repo_key }}
-            </a>
-          </li>
+      <div class="repos-grid">
+        {% for repo_key in repos %}
+          <a href="{{ url_for('workspace', owner=repo_key.split('/')[0], repo=repo_key.split('/')[1]) }}" class="repo-card">
+            <div class="repo-title">{{ repo_key }}</div>
+          </a>
         {% endfor %}
-      </ul>
+      </div>
     </div>
   </div>
 </body>
