@@ -16,9 +16,12 @@ import logging
 import shutil
 import re
 import stat
+from flask import Flask, request, jsonify
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
+
+app = Flask(__name__)
 
 def handle_remove_readonly(func, path, exc):
     # Clear the readonly flag and retry
@@ -204,5 +207,18 @@ def main():
         print(f"\n❌ Failed: {result['error']}")
 
 
+@app.route('/ingest', methods=['POST'])
+def ingest_repo():
+    try:
+        data = request.get_json()
+        repo_link = data.get('repo_link')
+        processor = RepoIngestor()
+        result = processor.ingest_repo(repo_link)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+
 if __name__ == "__main__":
     main()
+    app.run(host='0.0.0.0', port=5000)

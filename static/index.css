@@ -194,7 +194,7 @@ body, html {
   
   .repos-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     gap: 50px;
     justify-items: center;
     padding: 0 20px;
@@ -207,7 +207,7 @@ body, html {
     width: 100%;                  /* full width inside the grid column       */
     max-width: 260px;             /* caps the card width                     */
     height: 50%;                 /* takes the full height of the grid cell  */
-          /* makes it roughly square (remove if not wanted) */
+    margin-top: -10px;
   
     /* ---- Cosmetics ----------------------------------------------------- */
     background: #ffffff20;          /* solid dark background – same as input   */

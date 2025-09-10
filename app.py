@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify, session, render_template, redirect, url_for
 from flask_cors import CORS
+from flask_socketio import SocketIO, emit, join_room, leave_room, disconnect
 import os
 import requests
 from datetime import datetime
@@ -21,9 +22,14 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 app.secret_key = "your_secret_key"
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading", manage_session=False)
 
 # Cache loaded models per repo for efficiency
 loaded_repos = {}
+# Store per-session context: { sid: { 'repo': ..., 'history': [...] } }
+session_context = {}
+# Per-session WebSocket context
+ws_session_context = {}
 
 def get_repo_objects(repo):
     if repo not in loaded_repos:
@@ -83,8 +89,6 @@ def index():
     repos = list_available_repos()
     return render_template("index.html", repos=repos)
 
-
-
 @app.route('/loading/<owner>/<repo>')
 def loading(owner, repo):
     return render_template('loading.html', owner=owner, repo=repo)
@@ -97,6 +101,70 @@ def workspace(owner, repo):
 
     file_tree = build_tree_from_local(repo_path)
     return render_template("workspace.html", owner=owner, repo=repo, file_tree=file_tree)
+
+# --- WebSocket Chat ---
+@socketio.on('connect')
+def ws_connect():
+    wsid = request.sid
+    ws_session_context[wsid] = {"repo": None, "history": []}
+    emit('connected', {'message': 'WebSocket connected.'})
+
+@socketio.on('init_repo')
+def ws_init_repo(data):
+    wsid = request.sid
+    repo = data.get('repo')
+    if not repo:
+        emit('error', {'error': 'No repo specified.'})
+        return
+    try:
+        # Load and cache repo objects for this session
+        model, index, chunks, graph = get_repo_objects(repo)
+        ws_session_context[wsid]["repo"] = repo
+        ws_session_context[wsid]["model"] = model
+        ws_session_context[wsid]["index"] = index
+        ws_session_context[wsid]["chunks"] = chunks
+        ws_session_context[wsid]["graph"] = graph
+        ws_session_context[wsid]["history"] = []
+        emit('repo_initialized', {'status': 'ok'})
+    except Exception as e:
+        emit('error', {'error': str(e)})
+
+@socketio.on('chat_message')
+def ws_chat_message(data):
+    wsid = request.sid
+    message = data.get('message', '')
+    ctx = ws_session_context.get(wsid)
+    if not ctx or not ctx.get('repo'):
+        emit('error', {'error': 'Repo not initialized for this session.'})
+        return
+    # Maintain chat history (last 5)
+    history = ctx.get('history', [])
+    history.append({"role": "user", "content": message})
+    history = history[-5:]
+    ctx['history'] = history
+    # Build chat history context
+    chat_history = "\n".join([f"{m['role']}: {m['content']}" for m in history])
+    # Extended context: repo description and chat summary
+    repo_name = ctx['repo']
+    repo_desc = f"You are an expert code assistant helping with the repository '{repo_name}'. Answer questions about the codebase, its structure, and best practices."
+    style_instruction = "Please answer paragraphs, without sections, comparison tables, tables , can use headings and codeblocks. Use the chat history below for context. Be concise to what user asks!"
+    # Retrieve relevant chunks and build prompt
+    model = ctx['model']
+    index = ctx['index']
+    chunks = ctx['chunks']
+    graph = ctx['graph']
+    retrieved = rag_repo.retrieve(message, model, index, chunks, graph, top_k=5)
+    prompt = f"{repo_desc}\n\nChat history:\n{chat_history}\n\n{style_instruction}\n" + rag_repo.build_prompt(message, retrieved)
+    answer = rag_repo.ask_llm(prompt)
+    # Add bot reply to history
+    history.append({"role": "assistant", "content": answer})
+    ctx['history'] = history[-5:]
+    emit('chat_reply', {'reply': answer})
+
+@socketio.on('disconnect')
+def ws_disconnect():
+    wsid = request.sid
+    ws_session_context.pop(wsid, None)
 
 @app.route("/api/chat/<owner>/<repo>", methods=["POST"])
 def chat_api(owner, repo):
@@ -165,4 +233,4 @@ def chat(repo):
     return jsonify({"reply": answer})
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    socketio.run(app, debug=True, host='0.0.0.0', port=5000)

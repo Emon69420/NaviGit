@@ -3,7 +3,7 @@
 <head>
   <title>{{ repo }}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='workspace-dark.css') }}">
-
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
   <!-- CodeMirror assets -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.9/codemirror.min.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.9/theme/material-darker.min.css">
@@ -73,7 +73,18 @@
       <div id="chat-history" class="chat-history"></div>
       <div class="chat-input">
         <textarea id="chat-input" rows="2" placeholder="Ask about this repo..."></textarea>
-        <button onclick="sendMessage()">Send</button>
+        <div class="chat-input-row">
+          <button id="context-btn" type="button">Context</button>
+          <button id="send-btn" disabled>Send</button>
+        </div>
+      </div>
+      <div id="context-modal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:10000; align-items:center; justify-content:center;">
+        <div id="context-modal-bg" style="position:absolute; top:0; left:0; width:100vw; height:100vh; background:rgba(30,30,30,0.7); backdrop-filter: blur(4px);"></div>
+        <div id="context-modal-content" style="position:relative; background:#23272e; border-radius:12px; box-shadow:0 8px 32px #000a; padding:24px 20px; min-width:340px; max-width:90vw; max-height:80vh; overflow:auto; z-index:1; display:flex; flex-direction:column; gap:16px;">
+          <input id="context-search" type="text" placeholder="Search files..." style="margin-bottom:12px; padding:8px 12px; border-radius:6px; border:none; background:#181a20; color:#fff; font-size:1em; outline:none;" />
+          <div id="context-file-tree"></div>
+          <button id="context-cancel" style="margin-top:12px; align-self:flex-end; background:#494949; color:#fff; border:none; border-radius:6px; padding:6px 18px; font-size:1em; cursor:pointer;">Cancel</button>
+        </div>
       </div>
     </div>
   </div>
@@ -119,12 +130,10 @@
     function toggleSidebar() {
       document.querySelector('.vscode-main').classList.toggle('collapsed');
     }
-  </script>
-  <script>
-    const resizer = document.getElementById('chat-resizer');
-    const codePanel = document.querySelector('.code-panel');
-    const chatPanel = document.querySelector('.chat-panel');
+
     let isResizing = false;
+    const resizer = document.getElementById('chat-resizer');
+    const chatPanel = document.querySelector('.chat-panel');
 
     resizer.addEventListener('mousedown', function(e) {
       isResizing = true;
@@ -137,7 +146,7 @@
       const containerRight = chatPanel.parentElement.getBoundingClientRect().right;
       let newChatWidth = containerRight - e.clientX;
       // Set min/max width
-      newChatWidth = Math.max(180, Math.min(12000, newChatWidth));
+      newChatWidth = Math.max(180, Math.min(1200, newChatWidth));
       chatPanel.style.width = newChatWidth + 'px';
       chatPanel.style.flex = 'none';
     });
@@ -149,16 +158,189 @@
       }
     });
 
-    async function sendMessage() {
-      const message = document.getElementById('chat-input').value;
-      const res = await fetch(`/chat/{{ repo }}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message })
-      });
-      const data = await res.json();
-      // Handle the response data
+    let contextBtn = document.getElementById('context-btn');
+    let contextModal = document.getElementById('context-modal');
+    let contextModalBg = document.getElementById('context-modal-bg');
+    let contextModalContent = document.getElementById('context-modal-content');
+    let contextFileTree = document.getElementById('context-file-tree');
+    let contextSearch = document.getElementById('context-search');
+    let contextCancel = document.getElementById('context-cancel');
+
+    // Helper: recursively render file tree as clickable list
+    function renderFileTree(tree, path = "") {
+      const ul = document.createElement('ul');
+      ul.style.listStyle = 'none';
+      ul.style.paddingLeft = '16px';
+      for (const key in tree) {
+        if (typeof tree[key] === 'string') {
+          // File
+          const li = document.createElement('li');
+          li.className = 'file';
+          li.textContent = path + key;
+          li.style.cursor = 'pointer';
+          li.style.padding = '4px 0';
+          li.onclick = function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            let prompt = chatInput.value.trim();
+            if (prompt.length > 0 && !prompt.endsWith('\n')) prompt += '\n';
+            chatInput.value = prompt + '[context file: ' + (path + key) + ']';
+            contextModal.style.display = 'none';
+          };
+          ul.appendChild(li);
+        } else {
+          // Folder
+          const li = document.createElement('li');
+          li.className = 'folder';
+          li.textContent = path + key + '/';
+          li.style.fontWeight = 'bold';
+          li.style.cursor = 'pointer';
+          li.style.padding = '4px 0';
+          // Expand/collapse
+          let expanded = false;
+          const subTree = renderFileTree(tree[key], path + key + '/');
+          subTree.style.display = 'none';
+          li.onclick = function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            expanded = !expanded;
+            subTree.style.display = expanded ? 'block' : 'none';
+          };
+          ul.appendChild(li);
+          ul.appendChild(subTree);
+        }
+      }
+      return ul;
     }
+    // Helper: flatten file paths for search
+    function flattenFilePaths(tree, path = "") {
+      let files = [];
+      for (const key in tree) {
+        if (typeof tree[key] === 'string') {
+          files.push(path + key);
+        } else {
+          files = files.concat(flattenFilePaths(tree[key], path + key + '/'));
+        }
+      }
+      return files;
+    }
+    // Show modal on context button click
+    contextBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      contextModal.style.display = 'flex';
+      contextSearch.value = '';
+      // Render full tree
+      contextFileTree.innerHTML = '';
+      contextFileTree.appendChild(renderFileTree(window.file_tree));
+    });
+    // Cancel/close modal
+    contextCancel.onclick = contextModalBg.onclick = function() {
+      contextModal.style.display = 'none';
+    };
+    // Search functionality
+    contextSearch.addEventListener('input', function() {
+      const q = contextSearch.value.trim().toLowerCase();
+      contextFileTree.innerHTML = '';
+      if (!q) {
+        contextFileTree.appendChild(renderFileTree(window.file_tree));
+        return;
+      }
+      // Show only matching files
+      const matches = flattenFilePaths(window.file_tree).filter(f => f.toLowerCase().includes(q));
+      const ul = document.createElement('ul');
+      ul.style.listStyle = 'none';
+      ul.style.paddingLeft = '16px';
+      for (const f of matches) {
+        const li = document.createElement('li');
+        li.className = 'file';
+        li.textContent = f;
+        li.style.cursor = 'pointer';
+        li.style.padding = '4px 0';
+        li.onclick = function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          let prompt = chatInput.value.trim();
+          if (prompt.length > 0 && !prompt.endsWith('\n')) prompt += '\n';
+          chatInput.value = prompt + '[context file: ' + f + ']';
+          contextModal.style.display = 'none';
+        };
+        ul.appendChild(li);
+      }
+      contextFileTree.appendChild(ul);
+    });
+    // Expose file_tree for use (from Flask)
+    window.file_tree = {{ file_tree|tojson }};
+
+  </script>
+  <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script>
+    let socket;
+    let chatHistoryDiv = document.getElementById('chat-history');
+    let chatInput = document.getElementById('chat-input');
+    let sendBtn = document.getElementById('send-btn');
+    const repoName = "{{ repo }}";
+
+    function appendChat(role, content) {
+      const msgDiv = document.createElement('div');
+      msgDiv.className = 'chat-bubble ' + role;
+      if (role === 'assistant') {
+        // Render markdown, then wrap code blocks for styling
+        let html = marked.parse(content);
+        // Add a class to all code blocks for dark styling
+        html = html.replace(/<pre><code( class="[^"]*")?>/g, '<pre class="code-block"><code$1>');
+        msgDiv.innerHTML = html;
+      } else if (role === 'user') {
+        // User messages: treat as plain text, but still in a bubble
+        msgDiv.textContent = content;
+      } else {
+        msgDiv.textContent = content;
+      }
+      chatHistoryDiv.appendChild(msgDiv);
+      chatHistoryDiv.scrollTop = chatHistoryDiv.scrollHeight;
+    }
+
+    function connectChatSocket() {
+      socket = io({ transports: ['websocket'] });
+      sendBtn.disabled = true;
+      socket.on('connect', () => {
+        socket.emit('init_repo', { repo: repoName });
+      });
+      socket.on('repo_initialized', () => {
+        sendBtn.disabled = false;
+        // No 'Chat ready.' message in chat history
+      });
+      socket.on('chat_reply', (data) => {
+        appendChat('assistant', data.reply);
+      });
+      socket.on('error', (data) => {
+        appendChat('system', 'Error: ' + (data.error || 'Unknown error'));
+      });
+      socket.on('disconnect', () => {
+        sendBtn.disabled = true;
+        appendChat('system', 'Chat disconnected.');
+      });
+    }
+
+    function sendMessage() {
+      if (sendBtn.disabled) return;
+      const message = chatInput.value.trim();
+      if (!message || !socket || socket.disconnected) return;
+      appendChat('user', message);
+      socket.emit('chat_message', { message });
+      chatInput.value = '';
+    }
+
+    sendBtn.addEventListener('click', sendMessage);
+
+    chatInput.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+
+    window.addEventListener('DOMContentLoaded', connectChatSocket);
   </script>
 </body>
 </html>
