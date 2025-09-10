@@ -114,8 +114,11 @@ def retrieve(query: str, model, index, chunks, graph, top_k=5):
     return results + expanded
 
 def build_prompt(query: str, retrieved: List[Dict]):
-    context = "\n\n".join([f"From {r['file']}:\n{r['content']}" for r in retrieved])
-    return f"Context:\n{context}\n\nQuestion: {query}"
+    if retrieved:
+        context = "\n\n".join([f"From {r['file']}:\n{r['content']}" for r in retrieved])
+        return f"Look into these files if attached!\n{context}\n\nQuestion: {query}"
+    else:
+        return f"Question: {query}"
 
 # -------------------------------
 # 5. LLM call

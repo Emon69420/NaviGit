@@ -490,10 +490,11 @@ body::-webkit-scrollbar-track,
   font-size: 1em;
 }
 .chat-history .chat-bubble.user {
-  background: #23272e !important;
+  background: #0040ad !important;
   color: #e0e0e0;
   align-self: flex-end;
   margin-left: auto;
+  margin-right: 2%;
 }
 .chat-history .chat-bubble.assistant {
   background: #181a20;
@@ -526,4 +527,172 @@ body::-webkit-scrollbar-track,
   background: none !important;
   color: inherit !portant;
   padding: 0;
+}
+
+.add-to-chat-btn {
+  position: absolute;
+  z-index: 10001;
+  background: #007acc;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 16px;
+  font-size: 1em;
+  font-weight: 600;
+  box-shadow: 0 2px 8px 0 #23294644;
+  cursor: pointer;
+  transition: background 0.18s, box-shadow 0.18s, opacity 0.18s;
+  outline: none;
+  opacity: 0.97;
+}
+.add-to-chat-btn:hover, .add-to-chat-btn:focus {
+  background: #005fa3;
+  box-shadow: 0 4px 16px 0 #007acc44;
+}
+
+#toolkit-panel {
+  display: none;
+  flex: 1;
+  flex-direction: column;
+  background: #181a20;
+  overflow-y: auto;
+  min-width: 0;
+  min-height: 0;
+  border-right: 1px solid #23272e;
+  box-shadow: none;
+  padding: 0;
+  margin: 0;
+}
+#toolkit-dashboard-content {
+  color: #e0e0e0;
+  font-size: 1.08em;
+  line-height: 1.7;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 24px 0;
+}
+#toolkit-panel h1, #toolkit-panel h2, #toolkit-panel h3, #toolkit-panel h4 {
+  font-family: 'Instrument Serif', serif;
+  color: #ffb300;
+  margin-top: 1.2em;
+  margin-bottom: 0.5em;
+}
+#toolkit-panel ul, #toolkit-panel ol {
+  margin-left: 1.5em;
+  margin-bottom: 1em;
+}
+#toolkit-panel code, #toolkit-panel pre {
+  background: #232946;
+  color: #ffb300;
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-size: 0.98em;
+}
+#toolkit-panel strong {
+  color: #ffb300;
+}
+#toolkit-panel a {
+  color: #4fc3f7;
+  text-decoration: underline;
+}
+#toolkit-panel::-webkit-scrollbar {
+  width: 8px;
+  background: transparent;
+}
+#toolkit-panel::-webkit-scrollbar-thumb {
+  background: #23272e;
+  border-radius: 8px;
+}
+#toolkit-panel::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+#toolkit-modal {
+  display: none;
+  position: fixed;
+  top: 0; left: 0;
+  width: 100vw; height: 100vh;
+  z-index: 10010;
+  align-items: center;
+  justify-content: center;
+}
+#toolkit-modal-bg {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100vw; height: 100vh;
+  background: rgba(30,30,30,0.7);
+  backdrop-filter: blur(7px);
+  z-index: 0;
+}
+#toolkit-modal-content {
+  position: relative;
+  background: #181a20;
+  border-radius: 16px;
+  box-shadow: 0 8px 32px #000a;
+  min-width: 340px;
+  max-width: 96vw;
+  max-height: 88vh;
+  overflow: auto;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+#toolkit-dashboard-content {
+  color: #e0e0e0;
+  font-size: 1.08em;
+  line-height: 1.7;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 28px 0;
+}
+#toolkit-modal-content h1, #toolkit-modal-content h2, #toolkit-modal-content h3, #toolkit-modal-content h4 {
+  font-family: 'Instrument Serif', serif;
+  color: #ffb300;
+  margin-top: 1.2em;
+  margin-bottom: 0.5em;
+}
+#toolkit-modal-content ul, #toolkit-modal-content ol {
+  margin-left: 1.5em;
+  margin-bottom: 1em;
+}
+#toolkit-modal-content code, #toolkit-modal-content pre {
+  background: #232946;
+  color: #ffb300;
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-size: 0.98em;
+}
+#toolkit-modal-content strong {
+  color: #ffb300;
+}
+#toolkit-modal-content a {
+  color: #4fc3f7;
+  text-decoration: underline;
+}
+#toolkit-modal-content::-webkit-scrollbar {
+  width: 8px;
+  background: transparent;
+}
+#toolkit-modal-content::-webkit-scrollbar-thumb {
+  background: #23272e;
+  border-radius: 8px;
+}
+#toolkit-modal-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+#toolkit-close {
+  background: none;
+  border: none;
+  color: #ffb300;
+  font-size: 1.5em;
+  cursor: pointer;
+  margin-left: 18px;
+  transition: color 0.18s;
+}
+#toolkit-close:hover, #toolkit-close:focus {
+  color: #ff5252;
+}
+body.toolkit-modal-open {
+  overflow: hidden !important;
 }

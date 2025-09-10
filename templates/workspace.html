@@ -20,6 +20,9 @@
 
 </head>
 <body>
+  <script>
+    window.file_tree = {{ file_tree|tojson }};
+  </script>
   <div class="vscode-titlebar">
     <span class="vscode-dot red"></span>
     <span class="vscode-dot yellow"></span>
@@ -29,11 +32,11 @@
   <div class="vscode-main">
     <!-- Activity Bar -->
     <div class="activitybar">
-      <div id="explorer-toggle" class="activity-icon active" title="Explorer" onclick="toggleSidebar()">&#9776;</div>
+      <div id="explorer-toggle" class="activity-icon active" title="Explorer" onclick="showCodePanel()">&#9776;</div>
       <div class="activity-icon" title="Search">&#128269;</div>
       <div class="activity-icon" title="Source Control">&#128736;</div>
       <div class="activity-icon" title="Run">&#9654;</div>
-      <!-- Add more icons as needed -->
+      <div id="toolkit-toggle" class="activity-icon" title="Toolkit" style="font-size:1.3em;" onclick="showToolkitPanel()">🔨</div>
     </div>
     <!-- Sidebar (Explorer) -->
     <div class="sidebar">
@@ -64,9 +67,14 @@
       </ul>
     </div>
     <!-- Code Editor -->
-    <div class="code-panel">
+    <div id="code-panel" class="code-panel" style="display:flex;">
       <div id="current-file" class="current-file">Select a file</div>
       <textarea id="code-editor"></textarea>
+    </div>
+    <!-- Toolkit Dashboard Panel (hidden by default) -->
+    <div id="toolkit-panel" style="display:none; flex:1; flex-direction:column; background:#181a20; overflow:auto;">
+      <div style="padding:16px 24px; border-bottom:1px solid #23272e; background:#23272e; font-size:1.1em; font-weight:bold; color:#ffb300;">Toolkit: Repository Health Dashboard</div>
+      <div id="toolkit-dashboard-content" style="padding:24px; color:#e0e0e0; font-size:1.08em; max-width:900px; margin:auto;"></div>
     </div>
     <div class="resizer" id="chat-resizer"></div>
     <div class="chat-panel">
@@ -82,10 +90,23 @@
         <div id="context-modal-bg" style="position:absolute; top:0; left:0; width:100vw; height:100vh; background:rgba(30,30,30,0.7); backdrop-filter: blur(4px);"></div>
         <div id="context-modal-content" style="position:relative; background:#23272e; border-radius:12px; box-shadow:0 8px 32px #000a; padding:24px 20px; min-width:340px; max-width:90vw; max-height:80vh; overflow:auto; z-index:1; display:flex; flex-direction:column; gap:16px;">
           <input id="context-search" type="text" placeholder="Search files..." style="margin-bottom:12px; padding:8px 12px; border-radius:6px; border:none; background:#181a20; color:#fff; font-size:1em; outline:none;" />
+          <div id="context-selected-list" style="margin-bottom:8px;"></div>
           <div id="context-file-tree"></div>
-          <button id="context-cancel" style="margin-top:12px; align-self:flex-end; background:#494949; color:#fff; border:none; border-radius:6px; padding:6px 18px; font-size:1em; cursor:pointer;">Cancel</button>
+          <button id="context-apply" style="margin-top:12px; align-self:flex-end; background:#ee7f1e; color:#fff; border:none; border-radius:6px; padding:6px 18px; font-size:1em; cursor:pointer;">Apply</button>
+          <button id="context-cancel" style="margin-top:8px; align-self:flex-end; background:#494949; color:#fff; border:none; border-radius:6px; padding:6px 18px; font-size:1em; cursor:pointer;">Cancel</button>
         </div>
       </div>
+    </div>
+  </div>
+  <!-- Toolkit Dashboard Modal (move outside .vscode-main so it is not blurred) -->
+  <div id="toolkit-modal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:10010; align-items:center; justify-content:center;">
+    <div id="toolkit-modal-bg" style="position:absolute; top:0; left:0; width:100vw; height:100vh; background:rgba(30,30,30,0.7); backdrop-filter: blur(7px);"></div>
+    <div id="toolkit-modal-content" style="position:relative; background:#181a20; border-radius:22px; box-shadow:0 12px 48px #000a; padding:0; min-width:600px; max-width:1200px; min-height:420px; max-height:92vh; overflow:auto; z-index:1; display:flex; flex-direction:column; gap:0;">
+      <div style="padding:24px 48px 16px 48px; border-bottom:1px solid #23272e; background:#23272e; font-size:1.28em; font-weight:bold; color:#ffb300; display:flex; align-items:center; justify-content:space-between;">
+        Toolkit: Repository Health Dashboard
+        <button id="toolkit-close" style="background:none; border:none; color:#ffb300; font-size:1.7em; cursor:pointer; margin-left:18px;">&times;</button>
+      </div>
+      <div id="toolkit-modal-dashboard-content" style="padding:38px 48px; color:#e0e0e0; font-size:1.13em; max-width:1000px; min-height:220px; margin:auto; text-align:left;"></div>
     </div>
   </div>
   <script>
@@ -110,7 +131,62 @@
       return "null";
     }
 
+    const explorerToggle = document.getElementById('explorer-toggle');
+    const toolkitToggle = document.getElementById('toolkit-toggle');
+    const codePanel = document.getElementById('code-panel');
+    const toolkitPanel = document.getElementById('toolkit-panel');
+    const toolkitModal = document.getElementById('toolkit-modal');
+    const toolkitModalBg = document.getElementById('toolkit-modal-bg');
+    const toolkitClose = document.getElementById('toolkit-close');
+    let toolkitLoaded = false;
+
+    function showToolkitPanel() {
+      toolkitLoaded = false;
+      toolkitModal.style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+      document.querySelector('.vscode-main').style.filter = 'blur(7px)';
+      const contentDiv = document.getElementById('toolkit-modal-dashboard-content');
+      function pollDashboard() {
+        fetch(`/api/toolkit_dashboard/${repoName}`)
+          .then(r => r.json())
+          .then(data => {
+            if (data.markdown && data.markdown.trim()) {
+              contentDiv.innerHTML = marked.parse(data.markdown);
+              toolkitLoaded = true;
+            } else {
+              contentDiv.innerHTML = `
+                <div style='width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;'>
+                  <div class='toolkit-spinner' style='width:48px;height:48px;border:6px solid #ffb300;border-top:6px solid #23272e;border-radius:50%;animation:spin 1s linear infinite;'></div>
+                  <div style='font-size:1.25em;font-family:"Instrument Serif",serif;color:#ffb300;margin-top:8px;'>Generating dashboard...</div>
+                </div>
+              `;
+              setTimeout(pollDashboard, 2000);
+            }
+          })
+          .catch(() => {
+            contentDiv.innerHTML = '<div style="color:#ff5252;">Failed to load dashboard.</div>';
+          });
+      }
+      pollDashboard();
+    }
+
+    function closeToolkitPanel() {
+      toolkitModal.style.display = 'none';
+      document.body.style.overflow = '';
+      document.querySelector('.vscode-main').style.filter = '';
+    }
+
+    toolkitClose.onclick = toolkitModalBg.onclick = closeToolkitPanel;
+
+    function showCodePanel() {
+      toolkitPanel.style.display = 'none';
+      codePanel.style.display = 'flex';
+      explorerToggle.classList.add('active');
+      toolkitToggle.classList.remove('active');
+    }
+
     function showContent(filename) {
+      showCodePanel();
       const content = window.fileContents[filename] || "";
       editor.setValue(content);
       editor.setOption("mode", guessMode(filename));
@@ -165,6 +241,9 @@
     let contextFileTree = document.getElementById('context-file-tree');
     let contextSearch = document.getElementById('context-search');
     let contextCancel = document.getElementById('context-cancel');
+    let contextApply = document.getElementById('context-apply');
+    let contextSelectedList = document.getElementById('context-selected-list');
+    let selectedContextFiles = [];
 
     // Helper: recursively render file tree as clickable list
     function renderFileTree(tree, path = "") {
@@ -182,10 +261,12 @@
           li.onclick = function(e) {
             e.preventDefault();
             e.stopPropagation();
-            let prompt = chatInput.value.trim();
-            if (prompt.length > 0 && !prompt.endsWith('\n')) prompt += '\n';
-            chatInput.value = prompt + '[context file: ' + (path + key) + ']';
-            contextModal.style.display = 'none';
+            const filePath = path + key;
+            if (!selectedContextFiles.includes(filePath)) {
+              selectedContextFiles.push(filePath);
+              updateSelectedList();
+              updateContextBtnCount();
+            }
           };
           ul.appendChild(li);
         } else {
@@ -196,7 +277,6 @@
           li.style.fontWeight = 'bold';
           li.style.cursor = 'pointer';
           li.style.padding = '4px 0';
-          // Expand/collapse
           let expanded = false;
           const subTree = renderFileTree(tree[key], path + key + '/');
           subTree.style.display = 'none';
@@ -224,6 +304,49 @@
       }
       return files;
     }
+    // Helper: update selected files list
+    function updateSelectedList() {
+      contextSelectedList.innerHTML = '';
+      if (selectedContextFiles.length === 0) return;
+      selectedContextFiles.forEach(function(f, idx) {
+        const tag = document.createElement('span');
+        tag.textContent = f;
+        tag.style.background = '#232946';
+        tag.style.color = '#fff';
+        tag.style.padding = '2px 8px';
+        tag.style.marginRight = '6px';
+        tag.style.borderRadius = '6px';
+        tag.style.fontSize = '0.98em';
+        tag.style.display = 'inline-block';
+        tag.style.marginBottom = '4px';
+        tag.style.cursor = 'pointer';
+        tag.title = 'Remove';
+        tag.onclick = function() {
+          selectedContextFiles.splice(idx, 1);
+          updateSelectedList();
+          updateContextBtnCount();
+        };
+        contextSelectedList.appendChild(tag);
+      });
+    }
+    function updateContextBtnCount() {
+      let badge = contextBtn.querySelector('.context-count-badge');
+      if (badge) badge.remove();
+      if (selectedContextFiles.length > 0) {
+        badge = document.createElement('span');
+        badge.className = 'context-count-badge';
+        badge.textContent = selectedContextFiles.length;
+        badge.style.background = '#ff7700';
+        badge.style.color = '#fff';
+        badge.style.fontWeight = 'bold';
+        badge.style.fontSize = '0.85em';
+        badge.style.borderRadius = '50%';
+        badge.style.padding = '2px 7px';
+        badge.style.marginLeft = '7px';
+        badge.style.verticalAlign = 'middle';
+        contextBtn.appendChild(badge);
+      }
+    }
     // Show modal on context button click
     contextBtn.addEventListener('click', function(e) {
       e.preventDefault();
@@ -232,7 +355,13 @@
       // Render full tree
       contextFileTree.innerHTML = '';
       contextFileTree.appendChild(renderFileTree(window.file_tree));
+      updateSelectedList();
     });
+    // Apply selected files
+    contextApply.onclick = function() {
+      contextModal.style.display = 'none';
+      // Do not add to chat input, just close
+    };
     // Cancel/close modal
     contextCancel.onclick = contextModalBg.onclick = function() {
       contextModal.style.display = 'none';
@@ -259,10 +388,11 @@
         li.onclick = function(e) {
           e.preventDefault();
           e.stopPropagation();
-          let prompt = chatInput.value.trim();
-          if (prompt.length > 0 && !prompt.endsWith('\n')) prompt += '\n';
-          chatInput.value = prompt + '[context file: ' + f + ']';
-          contextModal.style.display = 'none';
+          if (!selectedContextFiles.includes(f)) {
+            selectedContextFiles.push(f);
+            updateSelectedList();
+            updateContextBtnCount();
+          }
         };
         ul.appendChild(li);
       }
@@ -271,15 +401,59 @@
     // Expose file_tree for use (from Flask)
     window.file_tree = {{ file_tree|tojson }};
 
-  </script>
-  <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <script>
+    // Add floating 'Add to Chat' button for CodeMirror selection (show only after selection is finished)
+    let addToChatBtn = null;
+    let addToChatBtnTimeout = null;
+
+    function showAddToChatBtn(cm) {
+      if (addToChatBtn) addToChatBtn.remove();
+      const sel = cm.getSelection();
+      if (!sel || sel.length === 0) return;
+      const cursorCoords = cm.cursorCoords(true, "page");
+      addToChatBtn = document.createElement('button');
+      addToChatBtn.textContent = 'Add to Chat';
+      addToChatBtn.className = 'add-to-chat-btn';
+      addToChatBtn.style.position = 'absolute';
+      addToChatBtn.style.zIndex = 10001;
+      addToChatBtn.style.top = (cursorCoords.top - 36) + 'px';
+      addToChatBtn.style.left = (cursorCoords.left) + 'px';
+      addToChatBtn.onclick = function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        let code = sel;
+        let chatInput = document.getElementById('chat-input');
+        if (code.includes('\n')) {
+          code = '\n```\n' + code + '\n```\n';
+        }
+        chatInput.value += code;
+        chatInput.focus();
+        addToChatBtn.remove();
+        addToChatBtn = null;
+      };
+      document.body.appendChild(addToChatBtn);
+    }
+
+    // Only show button after user stops selecting for 300ms
+    editor.on('cursorActivity', function(cm) {
+      if (addToChatBtn) addToChatBtn.remove();
+      if (addToChatBtnTimeout) clearTimeout(addToChatBtnTimeout);
+      addToChatBtnTimeout = setTimeout(() => {
+        const sel = cm.getSelection();
+        if (sel && sel.length > 0) {
+          showAddToChatBtn(cm);
+        }
+      }, 300);
+    });
+    document.addEventListener('scroll', function() {
+      if (addToChatBtn) addToChatBtn.remove();
+    }, true);
+
+    // Toolkit panel logic
+    const repoName = "{{ repo }}";
     let socket;
     let chatHistoryDiv = document.getElementById('chat-history');
     let chatInput = document.getElementById('chat-input');
     let sendBtn = document.getElementById('send-btn');
-    const repoName = "{{ repo }}";
 
     function appendChat(role, content) {
       const msgDiv = document.createElement('div');
@@ -327,7 +501,7 @@
       const message = chatInput.value.trim();
       if (!message || !socket || socket.disconnected) return;
       appendChat('user', message);
-      socket.emit('chat_message', { message });
+      socket.emit('chat_message', { message, context_files: selectedContextFiles });
       chatInput.value = '';
     }
 
@@ -341,6 +515,13 @@
     });
 
     window.addEventListener('DOMContentLoaded', connectChatSocket);
+
+    // Spinner animation
+    const style = document.createElement('style');
+    style.innerHTML = `@keyframes spin { 0% { transform: rotate(0deg);} 100% { transform: rotate(360deg);} }`;
+    document.head.appendChild(style);
   </script>
+  <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </body>
 </html>
