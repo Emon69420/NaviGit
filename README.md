@@ -20,6 +20,7 @@ Noodl is a Flask-based web application that allows you to ingest, index, and cha
 - Python 3.9 or newer
 - Git (for repo ingestion)
 - [Ollama](https://ollama.com/) (optional, for local LLM inference)
+- Windows machine (due to limited availability of different Machines And OS, I Could only test this for windows)
 
 Install Python dependencies:
 
