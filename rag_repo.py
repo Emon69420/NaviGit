@@ -9,7 +9,8 @@ from sentence_transformers import SentenceTransformer
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from openai import OpenAI
 import glob
-
+from dotenv import load_dotenv
+load_dotenv()
 
 INDEX_BASE = "indexes"   # root folder for all repos
 
