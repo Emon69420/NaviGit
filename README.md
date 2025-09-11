@@ -71,6 +71,22 @@ The app will be available at `http://localhost:5000`.
 
 ---
 
+## Shell Mode
+
+Beauty of NaviGit is that it let's the user go totally offline, does not even need a browser to interact with it, Most of larger codespaces have a shared server that can be only accessed with cli, so NaviGit is inbuilt with its own CLI support without the need of even turning on the flask App
+
+### 1. Run the command -> python ingest.py
+
+- Terminal will prompt you to enter the github repo url, and PAT only needed for private repos
+- After successful ingestion move on to next step
+
+### 2. Run the command -> python rag_repo.py
+
+- This will start building the indexes if not already built
+- Once built you can directly chat with GPT OSS for your queries related to the codebase!
+
+
+
 ## Switching LLM Backend
 
 ### Using Hugging Face (default)
@@ -104,10 +120,10 @@ The app will be available at `http://localhost:5000`.
 
 ## Troubleshooting
 
-- **WebSocket Disconnects:** In development, the chat may disconnect on code changes. This is normal due to Flask's auto-reload.
-- **Indexing Errors:** Ensure the repository URL is correct and accessible. For private repos, use a valid GitHub token.
+- **WebSocket Disconnects:** In development, the chat may disconnect on code changes. This is normal due to Flask's auto-reload. Run on gunicorn rather than Werkzeug
+- **Indexing Errors:** Ensure the repository URL is correct and accessible. For private repos, use a valid GitHub token. Timeouts may occur if your Network speed is a bottleneck
 - **LLM Errors:** Check your API key, model name, and backend availability.
-
+- **Torch Errors** During installing sentence transformers, you may run into pyTorch errors, you can fix them by just installing the appropriate torch versions!
 ---
 
 ## Project Structure
@@ -136,7 +152,7 @@ noodl/
 
 ## License
 
-This project is for educational and research purposes. Review the licenses of any LLMs or datasets you use with this tool.
+This project is Open Sourced, feel free to contribute, expand and fork this project into something amazing. Review the licenses of any LLMs or datasets you use with this tool.
 
 ---
 
