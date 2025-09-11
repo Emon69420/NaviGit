@@ -1,6 +1,6 @@
-# Noodl: AI-Powered Codebase Navigator
+# NaviGit: AI-Powered Codebase Navigator
 
-Noodl is a Flask-based web application that allows you to ingest, index, and chat with your code repositories using large language models (LLMs) such as GPT-OSS (via Hugging Face or Ollama). It provides a modern UI for exploring code, saving chat history, and leveraging retrieval-augmented generation (RAG) for code understanding.
+NaviGit is a Flask-based web application that allows you to ingest, index, and chat with your code repositories using large language models (LLMs) such as GPT-OSS (via Hugging Face or Ollama). It provides a modern UI for exploring code, saving chat history, and leveraging retrieval-augmented generation (RAG) for code understanding.
 
 ---
 
@@ -100,7 +100,7 @@ Beauty of NaviGit is that it let's the user go totally offline, does not even ne
 - Install and run [Ollama](https://ollama.com/).
 - Pull a model, e.g.:
   ```bash
-  ollama pull llama3
+  ollama pull gpt-oss:20b
   ```
 - In `rag_repo.py`, comment out the Hugging Face `ask_llm` function and uncomment the Ollama version:
     ```python
@@ -110,7 +110,7 @@ Beauty of NaviGit is that it let's the user go totally offline, does not even ne
             api_key="ollama",  # Any string, not used by Ollama
         )
         completion = client.chat.completions.create(
-            model="llama3",  # Or your preferred model
+            model="gpt-oss:20b",  # Or your preferred model
             messages=[{"role": "user", "content": prompt}],
         )
         return completion.choices[0].message.content
