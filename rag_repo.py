@@ -150,7 +150,7 @@ def build_or_load(repo_name: str, ingest_file: str):
     build_mode = not (os.path.exists(index_file) and os.path.exists(chunks_file) and os.path.exists(graph_file))
 
     if build_mode:
-        print(f"🛠️ Building FAISS + Graph for {repo_name}...")
+        print(f" Building FAISS + Graph for {repo_name}...")
         chunks = load_and_chunk(ingest_file)
         model, embeddings = embed_chunks(chunks)
         index = build_faiss(embeddings)
@@ -162,9 +162,9 @@ def build_or_load(repo_name: str, ingest_file: str):
         with open(graph_file, "wb") as f:
             pickle.dump(graph, f)
 
-        print(f"💾 Saved index for {repo_name}")
+        print(f" Saved index for {repo_name}")
     else:
-        print(f"📂 Loading saved index for {repo_name}...")
+        print(f" Loading saved index for {repo_name}...")
         index = faiss.read_index(index_file)
         with open(chunks_file, "r", encoding="utf-8") as f:
             chunks = json.load(f)
@@ -179,17 +179,17 @@ def build_or_load(repo_name: str, ingest_file: str):
 # -------------------------------
 
 if __name__ == "__main__":
-    repo_name = input("📂 Enter repo name: ").strip()
+    repo_name = input(" Enter repo name: ").strip()
     ingest_file = find_ingest_file(repo_name)
 
     if not os.path.exists(ingest_file):
-        print(f"❌ Ingest file not found: {ingest_file}")
+        print(f" Ingest file not found: {ingest_file}")
         exit(1)
     
-    print(f"📄 Using ingest file: {ingest_file}")
+    print(f" Using ingest file: {ingest_file}")
     model, index, chunks, graph = build_or_load(repo_name, ingest_file)
 
-    print(f"✅ Ready! Ask me questions about {repo_name}.")
+    print(f" Ready! Ask me questions about {repo_name}.")
     while True:
         q = input("\n❓ Ask about the repo (or 'exit'): ").strip()
         if q.lower() in ["exit", "quit"]:
@@ -197,9 +197,26 @@ if __name__ == "__main__":
 
         retrieved = retrieve(q, model, index, chunks, graph, top_k=5)
         if not retrieved:
-            print("⚠️ No relevant chunks found.")
+            print(" No relevant chunks found.")
             continue
 
         prompt = build_prompt(q, retrieved)
         answer = ask_llm(prompt)
-        print("\n🤖 Answer:\n", answer)
+        print("\n Answer:\n", answer)
+
+        # Ask user if they want to save the answer
+        save = input("\n Save this answer as markdown? (y/n): ").strip().lower()
+        if save == 'y':
+            filename = input("Enter filename (without .md): ").strip()
+            if not filename:
+                print(" No filename given, skipping save.")
+                continue
+            # Make sure folder exists
+            repo_dir = os.path.join(INDEX_BASE, repo_name)
+            chat_dir = os.path.join(repo_dir, "saved_chats")
+            os.makedirs(chat_dir, exist_ok=True)
+            md_path = os.path.join(chat_dir, filename + ".md")
+            with open(md_path, "w", encoding="utf-8") as f:
+                f.write(f"# Q: {q}\n\n")
+                f.write(answer)
+            print(f"Saved to {md_path}")

@@ -314,3 +314,13 @@ box-shadow: 0 4px 12px rgba(0,0,0,.35);
     height: 48px;
   }
 }
+
+.linktogit {
+  font-size: 0.9em;
+  color: #ffb300;
+  text-decoration: none;
+  border: 1px solid #ffb300;
+  padding: 6px 12px;
+  border-radius: 6px;
+  transition: background 0.2s, color 0.2s;
+}

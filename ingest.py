@@ -40,7 +40,7 @@ class RepoIngestor:
         """Extract owner and repo from GitHub URL."""
         match = re.search(r"github\.com[:/](?P<owner>[^/]+)/(?P<repo>[^/]+?)(?:\.git)?$", url)
         if not match:
-            raise ValueError(f"❌ Invalid GitHub URL: {url}")
+            raise ValueError(f"Invalid GitHub URL: {url}")
         return match.group("owner"), match.group("repo")
 
     # ------------------------------
@@ -55,7 +55,7 @@ class RepoIngestor:
         repo_path = Path(target_dir) / owner / repo
 
         if fresh and repo_path.exists():
-            logger.info(f"🗑️ Removing old repo at {repo_path}")
+            logger.info(f"Removing old repo at {repo_path}")
             shutil.rmtree(repo_path, onerror=handle_remove_readonly)
 
         repo_path.parent.mkdir(parents=True, exist_ok=True)
@@ -65,7 +65,7 @@ class RepoIngestor:
         if self.github_token and "@" not in url:
             clone_url = url.replace("https://", f"https://{self.github_token}@")
 
-        logger.info(f"🔄 Cloning {owner}/{repo} into {repo_path}")
+        logger.info(f"Cloning {owner}/{repo} into {repo_path}")
         result = subprocess.run(
             ["git", "clone", "--depth", "1", clone_url, str(repo_path)],
             capture_output=True,
@@ -73,9 +73,9 @@ class RepoIngestor:
         )
 
         if result.returncode != 0:
-            raise RuntimeError(f"❌ Git clone failed: {result.stderr.strip()}")
+            raise RuntimeError(f"Git clone failed: {result.stderr.strip()}")
 
-        logger.info(f"✅ Cloned {owner}/{repo} successfully")
+        logger.info(f"Cloned {owner}/{repo} successfully")
         return str(repo_path)
 
     # ------------------------------
@@ -98,7 +98,7 @@ class RepoIngestor:
             if self.github_token:
                 env["GITHUB_TOKEN"] = self.github_token
 
-            logger.info(f"📦 Running gitingest on {repo_url}")
+            logger.info(f"Running gitingest on {repo_url}")
             result = subprocess.run(
                 cmd,
                 capture_output=True,
@@ -146,7 +146,7 @@ class RepoIngestor:
     def delete_repo_index(self, repo: str, indexes_dir="indexes"):
         repo_dir = Path(indexes_dir) / repo
         if repo_dir.exists():
-            logger.info(f"🗑️ Deleting index folder: {repo_dir}")
+            logger.info(f"Deleting index folder: {repo_dir}")
             shutil.rmtree(repo_dir, onerror=handle_remove_readonly)
             return True
         return False
@@ -173,14 +173,14 @@ class RepoIngestor:
             return result
 
         result["output_file"] = output_file
-        logger.info(f"💾 Structured output saved: {output_file}")
+        logger.info(f"Structured output saved: {output_file}")
 
         if clone:
             try:
                 local_path = self.clone_repo(repo_url)
                 result["local_repo"] = local_path
             except Exception as e:
-                logger.warning(f"⚠️ Repo cloned skipped: {e}")
+                logger.warning(f"Repo cloned skipped: {e}")
                 result["local_repo"] = None
 
         return result
@@ -197,14 +197,14 @@ def main():
     result = processor.ingest_repo(repo_url, clone=True)
 
     if result["success"]:
-        print("\n✅ Ingestion successful!")
-        print(f"💾 Structured output: {result['output_file']}")
+        print("\Ingestion successful!")
+        print(f"Structured output: {result['output_file']}")
         if result.get("local_repo"):
-            print(f"📂 Local repo clone: {result['local_repo']}")
+            print(f"Local repo clone: {result['local_repo']}")
         preview = result["structured_text"][:200].replace("\n", " ") + "..."
-        print(f"📄 Preview: {preview}")
+        print(f"Preview: {preview}")
     else:
-        print(f"\n❌ Failed: {result['error']}")
+        print(f"\n Failed: {result['error']}")
 
 
 @app.route('/ingest', methods=['POST'])
@@ -220,8 +220,8 @@ def ingest_repo():
 
 
 if __name__ == "__main__":
-    repo_url = input("🔗 Enter GitHub repo URL: ").strip()
-    github_token = input("🔑 Enter GitHub Personal Access Token (leave blank for public repo): ").strip() or None
+    repo_url = input(" Enter GitHub repo URL: ").strip()
+    github_token = input(" Enter GitHub Personal Access Token (leave blank for public repo): ").strip() or None
 
     processor = RepoIngestor(github_token=github_token)
     result = processor.ingest_repo(repo_url)

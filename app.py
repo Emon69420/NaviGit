@@ -23,6 +23,8 @@ import time
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+INDEX_BASE = "indexes"  # root folder for all repos
+
 app = Flask(__name__)
 app.secret_key = "your_secret_key"
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading", manage_session=False)
@@ -65,7 +67,7 @@ def build_tree_from_local(repo_path: str):
                 with open(os.path.join(root, f), "r", encoding="utf-8", errors="replace") as fh:
                     content = fh.read()
             except Exception as e:
-                content = f"⚠️ Error reading file: {e}"
+                content = f"Error reading file: {e}"
             current[f] = content
     return tree
     
@@ -100,7 +102,7 @@ def loading(owner, repo):
 def workspace(owner, repo):
     repo_path = os.path.join("my_repos", owner, repo)
     if not os.path.exists(repo_path):
-        return f"❌ Repo {owner}/{repo} not found locally", 404
+        return f"Repo {owner}/{repo} not found locally", 404
 
     file_tree = build_tree_from_local(repo_path)
     return render_template("workspace.html", owner=owner, repo=repo, file_tree=file_tree)
@@ -179,7 +181,7 @@ def chat_api(owner, repo):
     data = request.get_json()
     user_message = data.get("message", "")
     # TODO: handle LLM query here with the repo context
-    return jsonify({"reply": f"🤖 (LLM would answer about {owner}/{repo}): {user_message}"})
+    return jsonify({"reply": f" (LLM would answer about {owner}/{repo}): {user_message}"})
 
 @app.route('/ingest', methods=['POST'])
 def ingest_repo():
@@ -329,6 +331,58 @@ Be insightful, use markdown with proper structure to understand, and make it vis
         from threading import Thread
         Thread(target=generate_dashboard, daemon=True).start()
     return jsonify({'generating': True, 'markdown': ''})
+
+@app.route('/save_chat/<repo>', methods=['POST'])
+def save_chat(repo):
+    data = request.get_json()
+    question = data.get('question', '')
+    answer = data.get('answer', '')
+    filename = data.get('filename', '').strip()
+    if not filename:
+        return jsonify({'success': False, 'error': 'No filename provided'})
+    try:
+        repo_dir = os.path.join(INDEX_BASE, repo)
+        chat_dir = os.path.join(repo_dir, 'saved_chats')
+        os.makedirs(chat_dir, exist_ok=True)
+        md_path = os.path.join(chat_dir, filename + '.md')
+        with open(md_path, 'w', encoding='utf-8') as f:
+            f.write(f"# Q: {question}\n\n")
+            f.write(answer)
+        return jsonify({'success': True, 'path': md_path})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/saved_chats/<repo>')
+def api_saved_chats(repo):
+    try:
+        chat_dir = os.path.join(INDEX_BASE, repo, 'saved_chats')
+        if not os.path.exists(chat_dir):
+            return jsonify({'success': True, 'chats': []})
+        chats = []
+        for fname in os.listdir(chat_dir):
+            if fname.endswith('.md'):
+                path = os.path.join(chat_dir, fname)
+                with open(path, encoding='utf-8', errors='ignore') as f:
+                    content = f.read()
+                preview = content[:300].replace('\n', ' ').replace('# Q:', '').strip()
+                chats.append({'filename': fname, 'preview': preview + ('...' if len(content) > 300 else '')})
+        chats.sort(key=lambda c: c['filename'])
+        return jsonify({'success': True, 'chats': chats})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/saved_chats/<repo>/<filename>')
+def api_saved_chat_full(repo, filename):
+    try:
+        chat_dir = os.path.join(INDEX_BASE, repo, 'saved_chats')
+        path = os.path.join(chat_dir, filename)
+        if not os.path.exists(path):
+            return jsonify({'success': False, 'error': 'Not found'})
+        with open(path, encoding='utf-8', errors='ignore') as f:
+            content = f.read()
+        return jsonify({'success': True, 'content': content})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
 
 if __name__ == '__main__':
     socketio.run(app, debug=True, host='0.0.0.0', port=5000)

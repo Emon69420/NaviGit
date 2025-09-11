@@ -33,9 +33,7 @@
     <!-- Activity Bar -->
     <div class="activitybar">
       <div id="explorer-toggle" class="activity-icon active" title="Explorer" onclick="showCodePanel()">&#9776;</div>
-      <div class="activity-icon" title="Search">&#128269;</div>
-      <div class="activity-icon" title="Source Control">&#128736;</div>
-      <div class="activity-icon" title="Run">&#9654;</div>
+      <div id="savedchats-toggle" class="activity-icon" title="Saved Chats" style="font-size:1.3em;" onclick="showSavedChatsPanel()">💾</div>
       <div id="toolkit-toggle" class="activity-icon" title="Toolkit" style="font-size:1.3em;" onclick="showToolkitPanel()">🔨</div>
     </div>
     <!-- Sidebar (Explorer) -->
@@ -107,6 +105,17 @@
         <button id="toolkit-close" style="background:none; border:none; color:#ffb300; font-size:1.7em; cursor:pointer; margin-left:18px;">&times;</button>
       </div>
       <div id="toolkit-modal-dashboard-content" style="padding:38px 48px; color:#e0e0e0; font-size:1.13em; max-width:1000px; min-height:220px; margin:auto; text-align:left;"></div>
+    </div>
+  </div>
+  <!-- Saved Chats Modal (move outside .vscode-main so it is not blurred) -->
+  <div id="savedchats-modal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:10010; align-items:center; justify-content:center;">
+    <div id="savedchats-modal-bg" style="position:absolute; top:0; left:0; width:100vw; height:100vh; background:rgba(30,30,30,0.7); backdrop-filter: blur(7px);"></div>
+    <div id="savedchats-modal-content" style="position:relative; background:#181a20; border-radius:22px; box-shadow:0 12px 48px #000a; padding:0; min-width:480px; max-width:900px; min-height:320px; max-height:92vh; overflow:auto; z-index:1; display:flex; flex-direction:column; gap:0;">
+      <div style="padding:24px 48px 16px 48px; border-bottom:1px solid #23272e; background:#23272e; font-size:1.28em; font-weight:bold; color:#ffb300; display:flex; align-items:center; justify-content:space-between;">
+        Saved Chats
+        <button id="savedchats-close" style="background:none; border:none; color:#ffb300; font-size:1.7em; cursor:pointer; margin-left:18px;">&times;</button>
+      </div>
+      <div id="savedchats-list" style="padding:38px 48px; color:#e0e0e0; font-size:1.13em; max-width:800px; min-height:120px; margin:auto; text-align:left;"></div>
     </div>
   </div>
   <script>
@@ -193,19 +202,24 @@
       document.getElementById("current-file").innerText = filename;
     }
 
-    function toggleFolder(el) {
-      let sublist = el.nextElementSibling;
+    function toggleFolder(span) {
+      const li = span.parentElement;
+      const sublist = li.querySelector('ul');
       if (!sublist) return;
-      if (sublist.style.display === "none" || sublist.style.display === "") {
-        sublist.style.display = "block";
+      if (sublist.style.display === 'none' || sublist.style.display === '') {
+        sublist.style.display = 'block';
       } else {
-        sublist.style.display = "none";
+        sublist.style.display = 'none';
       }
     }
 
     function toggleSidebar() {
       document.querySelector('.vscode-main').classList.toggle('collapsed');
     }
+
+    explorerToggle.onclick = function() {
+      toggleSidebar();
+    };
 
     let isResizing = false;
     const resizer = document.getElementById('chat-resizer');
@@ -464,8 +478,39 @@
         // Add a class to all code blocks for dark styling
         html = html.replace(/<pre><code( class="[^"]*")?>/g, '<pre class="code-block"><code$1>');
         msgDiv.innerHTML = html;
+        // Add save icon button below the answer
+        const saveBtn = document.createElement('button');
+        saveBtn.className = 'save-chat-btn';
+        saveBtn.title = 'Save this answer as markdown';
+        saveBtn.innerHTML = '💾 Save Answer';
+        saveBtn.style.marginTop = '8px';
+        saveBtn.style.background = 'none';
+        saveBtn.style.border = 'none';
+        saveBtn.style.cursor = 'pointer';
+        saveBtn.style.fontSize = '1.2em';
+        saveBtn.style.color = '#ffb300';
+        saveBtn.onclick = function() {
+          const filename = prompt('Enter filename for markdown (no .md):');
+          if (!filename) return;
+          fetch(`/save_chat/${repoName}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              question: window.lastUserMessage || '',
+              answer: content,
+              filename: filename
+            })
+          }).then(r => r.json()).then(data => {
+            if (data.success) {
+              saveBtn.innerHTML = '✅';
+              setTimeout(() => { saveBtn.innerHTML = '💾'; }, 2000);
+            } else {
+              alert('Failed to save: ' + (data.error || 'Unknown error'));
+            }
+          });
+        };
+        msgDiv.appendChild(saveBtn);
       } else if (role === 'user') {
-        // User messages: treat as plain text, but still in a bubble
         msgDiv.textContent = content;
       } else {
         msgDiv.textContent = content;
@@ -520,6 +565,107 @@
     const style = document.createElement('style');
     style.innerHTML = `@keyframes spin { 0% { transform: rotate(0deg);} 100% { transform: rotate(360deg);} }`;
     document.head.appendChild(style);
+
+    function showSavedChatsPanel() {
+      const modal = document.getElementById('savedchats-modal');
+      const modalBg = document.getElementById('savedchats-modal-bg');
+      const closeBtn = document.getElementById('savedchats-close');
+      const listDiv = document.getElementById('savedchats-list');
+      listDiv.innerHTML = '<div style="color:#aaa;">Loading saved chats...</div>';
+      modal.style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+      document.querySelector('.vscode-main').style.filter = 'blur(7px)';
+      fetch(`/api/saved_chats/${repoName}`)
+        .then(r => r.json())
+        .then(data => {
+          if (!data.success || !data.chats || data.chats.length === 0) {
+            listDiv.innerHTML = '<div style="color:#aaa;">No saved chats found for this repo.</div>';
+            listDiv.className = '';
+            return;
+          }
+          listDiv.innerHTML = '';
+          listDiv.className = 'savedchats-grid'; // Add grid class for 3-column layout
+          data.chats.forEach(chat => {
+            const chatDiv = document.createElement('div');
+            chatDiv.className = 'savedchat-card';
+            chatDiv.innerHTML = `<div style='font-size:1.08em;font-weight:bold;color:#ffb300;margin-bottom:8px;'>${chat.filename.slice(0, -3)}</div>` +
+              `<div style='font-size:0.98em;white-space:pre-line;'>${chat.preview}</div>` +
+              `<button style='position:absolute;top:18px;right:18px;background:none;border:none;color:#ffb300;font-size:1.2em;cursor:pointer;' title='View Full'></button>`;
+            chatDiv.querySelector('button').onclick = function(e) {
+              e.stopPropagation();
+              showSavedChatFull(chat.filename);
+            };
+            chatDiv.onclick = function() { showSavedChatFull(chat.filename); };
+            listDiv.appendChild(chatDiv);
+          });
+        });
+      closeBtn.onclick = modalBg.onclick = function() {
+        modal.style.display = 'none';
+        document.body.style.overflow = '';
+        document.querySelector('.vscode-main').style.filter = '';
+      };
+    }
+    function showSavedChatFull(filename) {
+      const listDiv = document.getElementById('savedchats-list');
+      listDiv.className = '';
+      listDiv.innerHTML = '<div style="color:#aaa;">Loading...</div>';
+      fetch(`/api/saved_chats/{{ repo }}/${filename}`)
+        .then(r => r.json())
+        .then(data => {
+          if (!data.success) {
+            listDiv.innerHTML = '<div style="color:#ff5252;">Failed to load chat.</div>';
+            return;
+          }
+          // Add row with back and add to chat buttons
+          listDiv.innerHTML =
+            `<div style='margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;'>\
+              <button onclick='showSavedChatsPanel()' style='background:none;border:none;color:#ffb300;font-size:1.1em;cursor:pointer;'>&larr; Back to list</button>\
+              <button id='add-to-chat-btn' style='background:#ffb300;border:none;color:#181a20;font-size:1em;cursor:pointer;padding:7px 18px;border-radius:7px;font-weight:bold;'>Add to Chat</button>\
+            </div>` +
+            `<div style='font-size:1.01em;background:#232946;padding:18px 22px;border-radius:10px;'>${marked.parse(data.content)}</div>`;
+          // Attach event handler after rendering
+          document.getElementById('add-to-chat-btn').onclick = function() {
+            addSavedChatToChat(data.content);
+            // Close the modal
+            document.getElementById('savedchats-modal').style.display = 'none';
+            document.body.style.overflow = '';
+            document.querySelector('.vscode-main').style.filter = '';
+          };
+        });
+    }
+    function addSavedChatToChat(content) {
+      const chatInput = document.getElementById('chat-input');
+      chatInput.value += (chatInput.value ? '\n' : '') + content;
+      chatInput.focus();
+    }
+
+    // Add CSS for grid layout and square cards
+    const styleGrid = document.createElement('style');
+    styleGrid.innerHTML = `
+      .savedchats-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 28px 24px;
+      }
+      .savedchat-card {
+        background: #23272e;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px #0002;
+        position: relative;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+        align-items: flex-start;
+        aspect-ratio: 1 / 1;
+        min-width: 0;
+        min-height: 0;
+        padding: 18px 22px;
+        margin-bottom: 0;
+        overflow: hidden;
+      }
+    `;
+    document.head.appendChild(styleGrid);
   </script>
   <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
