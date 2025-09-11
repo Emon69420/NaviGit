@@ -124,10 +124,27 @@ def build_prompt(query: str, retrieved: List[Dict]):
 # 5. LLM call
 # -------------------------------
 
+# use this one for locally deployed GPT-OSS via Ollama
+'''
+def ask_llm(prompt: str):
+    client = OpenAI(
+        base_url="http://localhost:11434/v1",  # Ollama's default API endpoint
+        api_key="ollama",  # Any string, not used by Ollama but required by openai-python
+    )
+    completion = client.chat.completions.create(
+        model="gpt-oss:20b",
+        messages=[{"role": "user", "content": prompt}],
+    )
+    return completion.choices[0].message.content
+
+'''
+
+# use this one for HuggingFace hosted GPT-OSS (Comment out for Ollama)
+
 def ask_llm(prompt: str):
     client = OpenAI(
         base_url="https://router.huggingface.co/v1",
-        api_key="...",  # replace with your token
+        api_key= os.environ.get("HF_API_KEY"),  # replace with your token
     )
     completion = client.chat.completions.create(
         model="openai/gpt-oss-20b",
@@ -191,7 +208,7 @@ if __name__ == "__main__":
 
     print(f" Ready! Ask me questions about {repo_name}.")
     while True:
-        q = input("\n❓ Ask about the repo (or 'exit'): ").strip()
+        q = input("\n Ask about the repo (or 'exit'): ").strip()
         if q.lower() in ["exit", "quit"]:
             break
 
