@@ -190,7 +190,7 @@ class RepoIngestor:
 # CLI for testing
 # ------------------------------
 def main():
-    github_token = os.getenv("GITHUB_API_TOKEN") or os.getenv("GITHUB_TOKEN")
+    github_token = input("🔑 Enter GitHub Personal Access Token (leave blank for public repo): ").strip() or None
     processor = RepoIngestor(github_token)
 
     repo_url = input("Enter GitHub repo URL: ").strip()
@@ -220,5 +220,10 @@ def ingest_repo():
 
 
 if __name__ == "__main__":
-    main()
+    repo_url = input("🔗 Enter GitHub repo URL: ").strip()
+    github_token = input("🔑 Enter GitHub Personal Access Token (leave blank for public repo): ").strip() or None
+
+    processor = RepoIngestor(github_token=github_token)
+    result = processor.ingest_repo(repo_url)
+    print(result)
     app.run(host='0.0.0.0', port=5000)

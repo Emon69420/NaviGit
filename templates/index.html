@@ -13,7 +13,7 @@
   <!-- Header -->
   <header>
     <div class="logo">NaviGit</div>
-
+    <div class="tagline">AI-powered code exploration</div>
   </header>
 
   <!-- Main -->
@@ -22,16 +22,20 @@
     <p>Ingest repos and chat with your code</p>
 
     <!-- Repo input -->
-    <div class="repo-input-container">
-      <form id="ingest-form">
+    <div class="ingest-flex-row">
+      <div class="input-container repo-input">
         <input type="text" id="repo-link" name="repo-link" placeholder="Enter GitHub repo URL" required>
-        <button type="submit" id="ingest-btn">Ingest</button>
-      </form>
-      <div id="loading" style="display:none;">
-        <div class="spinner"></div>
       </div>
-      <div id="result"></div>
+      <div class="input-container pat-input">
+        <input type="password" id="pat-input" placeholder="GitHub PAT (For Private Repos)">
+      </div>
+      <button type="submit" id="ingest-btn" form="ingest-form">Ingest</button>
     </div>
+    <form id="ingest-form" style="display:none;"></form>
+    <div id="loading" style="display:none;">
+      <div class="spinner"></div>
+    </div>
+    <div id="result"></div>
 
     <div class="repos-section">
 
@@ -60,20 +64,20 @@
   }
   </style>
   <script>
-  document.getElementById('ingest-form').onsubmit = async function(e) {
+  document.getElementById('ingest-btn').onclick = async function(e) {
     e.preventDefault();
     document.getElementById('loading').style.display = 'block';
     document.getElementById('ingest-btn').style.display = 'none';
     document.getElementById('result').innerText = '';
     const repo = document.getElementById('repo-link').value;
+    const pat = document.getElementById('pat-input').value;
     try {
       const res = await fetch('/ingest', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({repo_link: repo})
+        body: JSON.stringify({repo_link: repo, github_token: pat})
       });
       const data = await res.json();
-      // Hide spinner and reload page after ingestion
       document.getElementById('loading').style.display = 'none';
       if (data.success) {
         location.reload();

@@ -185,7 +185,8 @@ def chat_api(owner, repo):
 def ingest_repo():
     data = request.get_json()
     repo_link = data.get('repo_link')
-    processor = RepoIngestor()  # Add token if needed
+    github_token = data.get('github_token') or None
+    processor = RepoIngestor(github_token=github_token)
     result = processor.ingest_repo(repo_link)
     return jsonify(result)
 
